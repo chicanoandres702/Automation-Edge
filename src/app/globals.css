@@ -104,11 +104,6 @@
   animation: glitch 0.3s cubic-bezier(.25,.46,.45,.94) both infinite;
 }
 
-@keyframes border-beam {
-  0% { offset-distance: 0%; }
-  100% { offset-distance: 100%; }
-}
-
 .animate-pulse-slow {
   animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
@@ -119,4 +114,13 @@
 
 .text-glow-accent {
   text-shadow: 0 0 8px hsla(142, 100%, 50%, 0.5);
+}
+
+@keyframes loading-bar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-loading {
+  animation: loading-bar 2s linear infinite;
 }

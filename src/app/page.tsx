@@ -17,13 +17,11 @@ import {
   Activity,
   ChevronDown,
   Cpu,
-  Layers,
-  Search,
-  Box,
   Orbit,
   Globe,
   Database,
-  Lock
+  Lock,
+  Box
 } from "lucide-react";
 import { AutomationTask, AutomationStep, ActionType } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
@@ -429,7 +427,6 @@ export default function FleetNexusPage() {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleStartAutomation()}
-                suppressHydrationWarning
               />
               <Button 
                 onClick={handleStartAutomation}
