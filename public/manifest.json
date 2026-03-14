@@ -2,25 +2,14 @@
   "manifest_version": 3,
   "name": "Automaton Edge",
   "version": "1.0.0",
-  "description": "AI-powered browser automation sidebar.",
-  "permissions": [
-    "sidePanel",
-    "activeTab",
-    "scripting",
-    "tabs"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
-  "side_panel": {
-    "default_path": "index.html"
-  },
+  "description": "AI Browser Automation Sidebar Extension",
+  "permissions": ["sidePanel", "activeTab", "scripting", "storage"],
+  "host_permissions": ["<all_urls>"],
   "action": {
     "default_title": "Open Automaton"
   },
-  "icons": {
-    "16": "favicon.ico",
-    "48": "favicon.ico",
-    "128": "favicon.ico"
-  }
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "minimum_chrome_version": "114"
 }
