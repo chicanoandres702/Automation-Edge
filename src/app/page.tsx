@@ -13,10 +13,12 @@ import {
   Wifi,
   Fingerprint,
   AlertTriangle,
-  Sparkles
+  Sparkles,
+  BrainCircuit
 } from "lucide-react";
 import { AutomationTask, AutomationStep, ActionType } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
+import { contextualSurveyAwareness } from "@/ai/flows/contextual-survey-awareness";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -29,6 +31,7 @@ export default function FleetNexusPage() {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isReconsidering, setIsReconsidering] = useState(false);
   const [activeTask, setActiveTask] = useState<AutomationTask | null>(null);
   const [logs, setLogs] = useState<{msg: string, type: 'info' | 'warn' | 'success' | 'system'}[]>([]);
   const [geoStatus, setGeoStatus] = useState({ 
@@ -77,9 +80,11 @@ export default function FleetNexusPage() {
       const tabCount = (globalContent.match(/TAB:/g) || []).length || 1;
       const frameCount = (globalContent.match(/Frame/g) || []).length || 3;
 
-      addLog(`Fleet Unified: ${tabCount} Tabs, ${frameCount} Interaction Points mapped.`, "success");
+      if (!isSilent) addLog(`Fleet Unified: ${tabCount} Tabs, ${frameCount} Interaction Points mapped.`, "success");
+      return globalContent;
     } catch (error) {
       addLog("Fleet Sync Error: Access restricted", "warn");
+      return "";
     } finally {
       setIsSyncing(false);
     }
@@ -109,7 +114,6 @@ export default function FleetNexusPage() {
     
     const rotationKeywords = ['survey', 'multi', 'account', 'signup', 'register', 'rewards', 'poll', 'vote'];
     const needsRotation = rotationKeywords.some(kw => prompt.toLowerCase().includes(kw));
-    const identityMode = needsRotation ? 'rotational' : 'persistent';
 
     addLog(`Agent Analysis: ${needsRotation ? 'Dynamic Masking Required' : 'Session Stability Prioritized'}`, "system");
     
@@ -144,7 +148,7 @@ export default function FleetNexusPage() {
         createdAt: now,
         updatedAt: now,
         manualMode,
-        identityMode
+        identityMode: needsRotation ? 'rotational' : 'persistent'
       };
 
       setActiveTask(newTask);
@@ -158,31 +162,65 @@ export default function FleetNexusPage() {
     }
   };
 
-  const executeNextStep = useCallback(() => {
-    setActiveTask(prev => {
-      if (!prev) return null;
-      
-      const isLastStep = prev.currentStepIndex >= prev.steps.length - 1;
-      const nextIndex = isLastStep ? prev.currentStepIndex : prev.currentStepIndex + 1;
-      const nextStep = prev.steps[nextIndex];
+  const executeNextStep = useCallback(async () => {
+    if (!activeTask) return;
 
-      if (isLastStep && prev.status === 'running') {
-        addLog("All Objectives Completed.", "success");
-        return { ...prev, status: 'completed' as const, updatedAt: Date.now() };
+    // Agentic Reconsideration Phase
+    setIsReconsidering(true);
+    addLog("Step Complete. Agent Reconsidering Context...", "system");
+    
+    const currentDom = await runFleetSync(true);
+    
+    try {
+      const analysis = await contextualSurveyAwareness({
+        surveyContent: currentDom,
+        taskDescription: activeTask.prompt
+      });
+
+      addLog(`Re-evaluation Logic: ${analysis.reasoning}`, "info");
+      
+      if (analysis.nextAction === 'FLAG_FOR_REVIEW' || analysis.confidenceScore < 0.4) {
+        addLog("AI detected unexpected context. Pausing for Operator Review.", "warn");
+        setActiveTask(prev => prev ? { ...prev, status: 'intervention_required' } : null);
+        setIsReconsidering(false);
+        return;
       }
 
-      addLog(`Agent executing ${nextStep.type.toUpperCase()}: ${nextStep.description}`, "info");
-      
-      const nextStatus = prev.manualMode ? 'paused' : 'running';
-      
-      return { 
-        ...prev, 
-        currentStepIndex: nextIndex, 
-        status: nextStatus,
-        updatedAt: Date.now() 
-      };
-    });
-  }, [addLog]);
+      setActiveTask(prev => {
+        if (!prev) return null;
+        
+        const isLastStep = prev.currentStepIndex >= prev.steps.length - 1;
+        
+        if (isLastStep && prev.status === 'running') {
+          addLog("Objective Finalized. Protocol Terminal.", "success");
+          return { ...prev, status: 'completed' as const, updatedAt: Date.now() };
+        }
+
+        const nextIndex = prev.currentStepIndex + 1;
+        const nextStep = prev.steps[nextIndex];
+
+        addLog(`Agent executing ${nextStep.type.toUpperCase()}: ${nextStep.description}`, "info");
+        
+        return { 
+          ...prev, 
+          currentStepIndex: nextIndex, 
+          status: prev.manualMode ? 'paused' : 'running',
+          updatedAt: Date.now() 
+        };
+      });
+    } catch (err) {
+      addLog("Re-evaluation Fault: Defaulting to planned sequence.", "warn");
+      // Fallback to static progression
+      setActiveTask(prev => {
+        if (!prev) return null;
+        const nextIndex = prev.currentStepIndex + 1;
+        if (nextIndex >= prev.steps.length) return { ...prev, status: 'completed' };
+        return { ...prev, currentStepIndex: nextIndex };
+      });
+    } finally {
+      setIsReconsidering(false);
+    }
+  }, [activeTask, addLog, runFleetSync]);
 
   const handleReorderSteps = (newSteps: AutomationStep[]) => {
     setActiveTask(prev => prev ? { ...prev, steps: newSteps, updatedAt: Date.now() } : null);
@@ -190,15 +228,15 @@ export default function FleetNexusPage() {
   };
 
   useEffect(() => {
-    if (activeTask && activeTask.status === 'running' && !activeTask.manualMode) {
+    if (activeTask && activeTask.status === 'running' && !activeTask.manualMode && !isReconsidering) {
       executionTimer.current = setTimeout(() => {
         executeNextStep();
-      }, 3000);
+      }, 3500); // 3.5s cycle for thinking + execution
       return () => {
         if (executionTimer.current) clearTimeout(executionTimer.current);
       };
     }
-  }, [activeTask?.currentStepIndex, activeTask?.status, activeTask?.manualMode, executeNextStep]);
+  }, [activeTask?.currentStepIndex, activeTask?.status, activeTask?.manualMode, executeNextStep, isReconsidering]);
 
   const handleManualIntervention = (index: number) => {
     addLog(`Manual Override successful for Step ${index + 1}.`, "system");
@@ -251,10 +289,10 @@ export default function FleetNexusPage() {
             <SidebarTrigger className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg transition-colors" />
             <div className="flex flex-col">
               <h2 className="text-[10px] font-black tracking-[0.4em] uppercase text-primary flex items-center gap-2">
-                <Sparkles className="w-2.5 h-2.5" />
+                <BrainCircuit className="w-2.5 h-2.5" />
                 Gemini_3.0_Agent
               </h2>
-              <span className="text-[7px] font-mono text-muted-foreground uppercase opacity-50">FLASH_V3_REASONING_ACTIVE</span>
+              <span className="text-[7px] font-mono text-muted-foreground uppercase opacity-50">AGENTIC_REASONING_ACTIVE</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -299,7 +337,7 @@ export default function FleetNexusPage() {
             <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-accent rounded-2xl blur opacity-10 group-focus-within:opacity-30 transition-opacity" />
             <div className="relative bg-black/40 border border-white/10 p-4 rounded-2xl space-y-3">
               <Input 
-                placeholder="Declare high-level mission objective..."
+                placeholder="Declare mission objective..."
                 className="bg-transparent border-none focus-visible:ring-1 focus-visible:ring-primary/30 text-[11px] h-10 placeholder:text-muted-foreground/30 font-medium"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
@@ -321,10 +359,13 @@ export default function FleetNexusPage() {
             </div>
           </div>
 
-          {activeTask && (activeTask.status === 'running' || activeTask.status === 'paused') && (
+          {activeTask && (activeTask.status === 'running' || activeTask.status === 'paused' || activeTask.status === 'intervention_required') && (
             <div className="space-y-2 px-1">
               <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-primary/70">
-                <span>Mission_Progress</span>
+                <span className="flex items-center gap-2">
+                   {isReconsidering && <BrainCircuit className="w-3 h-3 animate-pulse" />}
+                   {isReconsidering ? "AI_RECONSIDERING..." : "Mission_Progress"}
+                </span>
                 <span className="font-mono">{Math.round(((activeTask.currentStepIndex + 1) / activeTask.steps.length) * 100)}%</span>
               </div>
               <Progress value={((activeTask.currentStepIndex + 1) / activeTask.steps.length) * 100} className="h-1 bg-white/5 [&>div]:bg-primary shadow-[0_0_10px_rgba(0,255,255,0.1)] rounded-full" />
@@ -355,10 +396,12 @@ export default function FleetNexusPage() {
                     </span>
                   </div>
                 ))}
-                {(isGenerating || isSyncing) && (
+                {(isGenerating || isSyncing || isReconsidering) && (
                   <div className="flex items-center gap-4 text-primary mt-4">
                     <div className="w-2 h-2 bg-primary rounded-full animate-ping" />
-                    <span className="text-[9px] font-black animate-pulse uppercase tracking-[0.2em]">Synthesizing (Gemini 3.0 Flash)...</span>
+                    <span className="text-[9px] font-black animate-pulse uppercase tracking-[0.2em]">
+                       {isReconsidering ? "Reconsidering Strategy..." : "Synthesizing Protocol..."}
+                    </span>
                   </div>
                 )}
               </div>
