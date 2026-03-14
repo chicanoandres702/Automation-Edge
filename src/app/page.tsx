@@ -87,7 +87,7 @@ export default function FleetNexusPage() {
 
   useEffect(() => {
     setMounted(true);
-    addLog("Cyber-Nexus OS v4.2 Loaded", "success");
+    addLog("Nexus_OS v4.2 Loaded: Gemini 3.0 Flash Active", "success");
     runFleetSync(true);
   }, [addLog, runFleetSync]);
 
@@ -121,7 +121,7 @@ export default function FleetNexusPage() {
     }
 
     await runFleetSync(true);
-    addLog(`Synthesizing Mission Plan using Gemini 2.0 Flash...`, "info");
+    addLog(`Synthesizing Mission Plan using Gemini 3.0 Flash...`, "info");
     
     try {
       const result = await generateAutomationFromPrompt(prompt);
@@ -252,9 +252,9 @@ export default function FleetNexusPage() {
             <div className="flex flex-col">
               <h2 className="text-[10px] font-black tracking-[0.4em] uppercase text-primary flex items-center gap-2">
                 <Sparkles className="w-2.5 h-2.5" />
-                Gemini_Agent
+                Gemini_3.0_Agent
               </h2>
-              <span className="text-[7px] font-mono text-muted-foreground uppercase opacity-50">FLASH_V2_ACTIVE</span>
+              <span className="text-[7px] font-mono text-muted-foreground uppercase opacity-50">FLASH_V3_REASONING_ACTIVE</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -358,7 +358,7 @@ export default function FleetNexusPage() {
                 {(isGenerating || isSyncing) && (
                   <div className="flex items-center gap-4 text-primary mt-4">
                     <div className="w-2 h-2 bg-primary rounded-full animate-ping" />
-                    <span className="text-[9px] font-black animate-pulse uppercase tracking-[0.2em]">Synthesizing...</span>
+                    <span className="text-[9px] font-black animate-pulse uppercase tracking-[0.2em]">Synthesizing (Gemini 3.0 Flash)...</span>
                   </div>
                 )}
               </div>
