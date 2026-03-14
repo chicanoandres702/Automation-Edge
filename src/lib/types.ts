@@ -32,4 +32,5 @@ export interface AutomationTask {
   createdAt: number;
   updatedAt: number;
   manualMode?: boolean;
+  identityMode: 'persistent' | 'rotational';
 }

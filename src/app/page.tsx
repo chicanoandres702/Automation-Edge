@@ -12,7 +12,8 @@ import {
   Zap,
   Wifi,
   MapPin,
-  AlertTriangle
+  AlertTriangle,
+  Fingerprint
 } from "lucide-react";
 import { AutomationTask, AutomationStep, ActionType } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
@@ -30,7 +31,12 @@ export default function FleetNexusPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [activeTask, setActiveTask] = useState<AutomationTask | null>(null);
   const [logs, setLogs] = useState<{msg: string, type: 'info' | 'warn' | 'success' | 'system'}[]>([]);
-  const [geoStatus, setGeoStatus] = useState({ ip: "Initializing...", location: "Locating...", status: "pending" });
+  const [geoStatus, setGeoStatus] = useState({ 
+    ip: "192.168.1.1", 
+    location: "Home Node", 
+    status: "active",
+    mode: 'persistent' as 'persistent' | 'rotational'
+  });
   const [manualMode, setManualMode] = useState(false);
   const { toast } = useToast();
   
@@ -40,21 +46,25 @@ export default function FleetNexusPage() {
     setLogs(prev => [...prev.slice(-40), { msg, type }]);
   }, []);
 
-  const runGeoIdSync = useCallback(async () => {
-    setGeoStatus(prev => ({ ...prev, status: 'pending' }));
+  const runGeoIdSync = useCallback(async (forceRotate = false) => {
+    if (!forceRotate && geoStatus.mode === 'persistent') {
+      addLog("Identity Stability Enforced: Maintaining current node.", "info");
+      return;
+    }
+
     addLog("Rotational IP Proxy: Cycling Geolocation...", "system");
-    
     await new Promise(r => setTimeout(r, 1200));
     
     const mockGeo = {
       ip: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
       location: "Frankfurt, DE (Encrypted Node)",
-      status: "active"
+      status: "active",
+      mode: 'rotational' as const
     };
     
     setGeoStatus(mockGeo);
     addLog(`Identity Masked: [${mockGeo.ip}] via ${mockGeo.location}`, "success");
-  }, [addLog]);
+  }, [addLog, geoStatus.mode]);
 
   const runFleetSync = useCallback(async (isSilent = false) => {
     setIsSyncing(true);
@@ -78,13 +88,8 @@ export default function FleetNexusPage() {
   useEffect(() => {
     setMounted(true);
     addLog("Cyber-Nexus OS v4.2 Loaded", "success");
-    
-    const init = async () => {
-      await runGeoIdSync();
-      await runFleetSync(true);
-    };
-    init();
-  }, [addLog, runGeoIdSync, runFleetSync]);
+    runFleetSync(true);
+  }, [addLog, runFleetSync]);
 
   const mapActionType = (desc: string): ActionType => {
     const d = desc.toLowerCase();
@@ -101,10 +106,22 @@ export default function FleetNexusPage() {
     if (!prompt.trim()) return;
 
     setIsGenerating(true);
-    addLog(`Pre-flight: Re-syncing Fleet and Identity...`, "system");
     
-    await Promise.all([runGeoIdSync(), runFleetSync(true)]);
+    // Analyze prompt for rotational identity needs
+    const rotationKeywords = ['survey', 'multi', 'account', 'signup', 'register', 'rewards', 'poll', 'vote'];
+    const needsRotation = rotationKeywords.some(kw => prompt.toLowerCase().includes(kw));
+    const identityMode = needsRotation ? 'rotational' : 'persistent';
+
+    addLog(`Objective Analysis: ${needsRotation ? 'High-Risk Node (Rotating Identity)' : 'Low-Risk Node (Enforcing Stability)'}`, "system");
     
+    if (needsRotation) {
+      await runGeoIdSync(true);
+    } else {
+      setGeoStatus(prev => ({ ...prev, mode: 'persistent' }));
+      addLog("Maintaining Persistent Identity for session safety.", "info");
+    }
+
+    await runFleetSync(true);
     addLog(`Synthesizing objective: "${prompt}"`, "info");
     
     try {
@@ -118,11 +135,6 @@ export default function FleetNexusPage() {
         status: 'pending'
       }));
 
-      // Randomly flag a step for review to simulate "Intervention Required"
-      if (newSteps.length > 2) {
-        newSteps[1].status = 'needs_review';
-      }
-
       const newTask: AutomationTask = {
         id: `task-${now}`,
         prompt,
@@ -132,12 +144,13 @@ export default function FleetNexusPage() {
         observedTabs: [],
         createdAt: now,
         updatedAt: now,
-        manualMode
+        manualMode,
+        identityMode
       };
 
       setActiveTask(newTask);
       setPrompt("");
-      addLog(manualMode ? "Task loaded in Manual Mode. Awaiting step command." : "Mission plan locked. Initializing execution...", "success");
+      addLog(manualMode ? "Task loaded in Manual Mode." : "Mission plan locked. Initializing execution...", "success");
     } catch (error) {
       addLog("Synthesis failed: LLM context error", "warn");
     } finally {
@@ -158,7 +171,6 @@ export default function FleetNexusPage() {
         return { ...prev, status: 'completed' as const, updatedAt: Date.now() };
       }
 
-      // If next step needs review, pause and signal intervention
       if (nextStep.status === 'needs_review') {
         addLog(`Intervention Required at Step ${nextIndex + 1}: ${nextStep.description}`, "warn");
         return { ...prev, status: 'intervention_required' as const, currentStepIndex: nextIndex, updatedAt: Date.now() };
@@ -270,8 +282,10 @@ export default function FleetNexusPage() {
             <Card className="p-3 border-white/5 bg-white/5 hover:bg-white/10 transition-all group relative overflow-hidden">
                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-accent/50 to-transparent opacity-50" />
               <div className="flex items-center gap-2 mb-2">
-                <MapPin className="w-3 h-3 text-accent" />
-                <span className="text-[8px] font-black text-accent uppercase tracking-widest">Identity_Mask</span>
+                <Fingerprint className={cn("w-3 h-3", geoStatus.mode === 'rotational' ? "text-accent" : "text-primary")} />
+                <span className={cn("text-[8px] font-black uppercase tracking-widest", geoStatus.mode === 'rotational' ? "text-accent" : "text-primary")}>
+                  {geoStatus.mode === 'rotational' ? 'Identity_Mask' : 'Identity_Lock'}
+                </span>
               </div>
               <div className="text-[11px] font-bold text-foreground/90 truncate tracking-tight">
                 {geoStatus.ip}
