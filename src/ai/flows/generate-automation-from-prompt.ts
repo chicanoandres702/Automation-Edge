@@ -1,7 +1,7 @@
 'use server';
 /**
- * @fileOverview This file implements an agentic Genkit flow to interpret natural language
- * prompts and generate a high-fidelity browser automation workflow.
+ * @fileOverview This file implements an agentic Genkit flow using Gemini 2.0 Flash
+ * to interpret natural language prompts and generate a high-fidelity browser automation workflow.
  *
  * - generateAutomationFromPrompt - A function that handles the automation workflow generation process.
  * - GenerateAutomationFromPromptInput - The input type for the generateAutomationFromPrompt function.
@@ -41,7 +41,7 @@ const automationPrompt = ai.definePrompt({
   name: 'generateAutomationPrompt',
   input: {schema: GenerateAutomationFromPromptInputSchema},
   output: {schema: GenerateAutomationFromPromptOutputSchema},
-  prompt: `You are a high-level AI Browser Agent specialized in cross-tab, deep-DOM automation.
+  prompt: `You are a high-level AI Browser Agent specialized in cross-tab, deep-DOM automation. You are powered by Gemini 2.0 Flash for enhanced agentic reasoning.
 
 Your objective is to translate user requests into a mission-critical sequence of operations. You have access to a "Fleet Context" (multi-tab/multi-window state) and "Deep DOM" (Shadow DOM and cross-origin frames).
 
@@ -53,6 +53,7 @@ Your objective is to translate user requests into a mission-critical sequence of
    - Suggest pauses or "Wait" steps between high-velocity actions.
    - Maintain identity stability for single-account tasks; suggest IP rotation ONLY for multi-account swarms.
 4. **Resilience**: If a specific ID or Class is likely to be dynamic (e.g., React/Next obfuscation), describe the element by its role, placeholder, or proximity (e.g., "The blue login button inside the main header").
+5. **Agentic Recovery**: Plan for checks; if an action might fail, suggest a verification step.
 
 User Objective: {{{prompt}}}
 
