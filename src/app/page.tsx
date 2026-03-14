@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -13,7 +12,8 @@ import {
   Zap,
   Wifi,
   Fingerprint,
-  AlertTriangle
+  AlertTriangle,
+  Sparkles
 } from "lucide-react";
 import { AutomationTask, AutomationStep, ActionType } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
@@ -111,7 +111,7 @@ export default function FleetNexusPage() {
     const needsRotation = rotationKeywords.some(kw => prompt.toLowerCase().includes(kw));
     const identityMode = needsRotation ? 'rotational' : 'persistent';
 
-    addLog(`Objective Analysis: ${needsRotation ? 'High-Risk Node (Rotating Identity)' : 'Low-Risk Node (Enforcing Stability)'}`, "system");
+    addLog(`Agent Analysis: ${needsRotation ? 'Dynamic Masking Required' : 'Session Stability Prioritized'}`, "system");
     
     if (needsRotation) {
       await runGeoIdSync(true);
@@ -121,7 +121,7 @@ export default function FleetNexusPage() {
     }
 
     await runFleetSync(true);
-    addLog(`Synthesizing objective: "${prompt}"`, "info");
+    addLog(`Synthesizing Mission Plan using Gemini 2.0 Flash...`, "info");
     
     try {
       const result = await generateAutomationFromPrompt(prompt);
@@ -149,7 +149,8 @@ export default function FleetNexusPage() {
 
       setActiveTask(newTask);
       setPrompt("");
-      addLog(manualMode ? "Task loaded in Manual Mode. Awaiting operator stepping." : "Mission plan locked. Initializing autonomous execution...", "success");
+      addLog(`Agent Reasoning: ${result.reasoning}`, "system");
+      addLog(`Mission synthesized. Risk Level: ${result.estimatedRisk.toUpperCase()}`, "success");
     } catch (error) {
       addLog("Synthesis failed: LLM context error", "warn");
     } finally {
@@ -166,16 +167,11 @@ export default function FleetNexusPage() {
       const nextStep = prev.steps[nextIndex];
 
       if (isLastStep && prev.status === 'running') {
-        addLog("All Fleet Objectives Completed.", "success");
+        addLog("All Objectives Completed.", "success");
         return { ...prev, status: 'completed' as const, updatedAt: Date.now() };
       }
 
-      if (nextStep.status === 'needs_review') {
-        addLog(`Intervention Required at Step ${nextIndex + 1}: ${nextStep.description}`, "warn");
-        return { ...prev, status: 'intervention_required' as const, currentStepIndex: nextIndex, updatedAt: Date.now() };
-      }
-
-      addLog(`Executing Step ${nextIndex + 1}: ${nextStep.description}`, "info");
+      addLog(`Agent executing ${nextStep.type.toUpperCase()}: ${nextStep.description}`, "info");
       
       const nextStatus = prev.manualMode ? 'paused' : 'running';
       
@@ -190,7 +186,7 @@ export default function FleetNexusPage() {
 
   const handleReorderSteps = (newSteps: AutomationStep[]) => {
     setActiveTask(prev => prev ? { ...prev, steps: newSteps, updatedAt: Date.now() } : null);
-    addLog("Workflow stack reordered by operator.", "system");
+    addLog("Operator reordered task priority.", "system");
   };
 
   useEffect(() => {
@@ -205,16 +201,12 @@ export default function FleetNexusPage() {
   }, [activeTask?.currentStepIndex, activeTask?.status, activeTask?.manualMode, executeNextStep]);
 
   const handleManualIntervention = (index: number) => {
-    addLog(`Manual Override initiated for Step ${index + 1}.`, "system");
+    addLog(`Manual Override successful for Step ${index + 1}.`, "system");
     setActiveTask(prev => {
       if (!prev) return null;
       const updatedSteps = [...prev.steps];
       updatedSteps[index].status = 'completed';
       return { ...prev, steps: updatedSteps, status: 'paused' };
-    });
-    toast({
-      title: "Manual Override Successful",
-      description: `Step ${index + 1} marked as resolved.`,
     });
   };
 
@@ -233,12 +225,12 @@ export default function FleetNexusPage() {
         onPause={() => {
           if (activeTask) {
             setActiveTask({...activeTask, status: 'paused'});
-            addLog("Protocol paused by operator.", "warn");
+            addLog("Protocol paused.", "warn");
           }
         }}
         onStop={() => {
           setActiveTask(null);
-          addLog("Operation aborted and purged.", "warn");
+          addLog("Mission purged.", "warn");
         }}
         onStep={executeNextStep}
         onIntervene={handleManualIntervention}
@@ -249,7 +241,7 @@ export default function FleetNexusPage() {
           if (activeTask) {
             setActiveTask(prev => prev ? { ...prev, manualMode: val } : null);
           }
-          addLog(`System Mode: ${val ? 'Manual Override Active' : 'Fully Autonomous'}`, "system");
+          addLog(`Protocol: ${val ? 'Manual Override' : 'Full Autonomy'}`, "system");
         }}
       />
       
@@ -258,8 +250,11 @@ export default function FleetNexusPage() {
           <div className="flex items-center gap-3">
             <SidebarTrigger className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg transition-colors" />
             <div className="flex flex-col">
-              <h2 className="text-[10px] font-black tracking-[0.4em] uppercase text-primary">Nexus_Console</h2>
-              <span className="text-[7px] font-mono text-muted-foreground uppercase opacity-50">AGI_SIDEBAR_v4.2</span>
+              <h2 className="text-[10px] font-black tracking-[0.4em] uppercase text-primary flex items-center gap-2">
+                <Sparkles className="w-2.5 h-2.5" />
+                Gemini_Agent
+              </h2>
+              <span className="text-[7px] font-mono text-muted-foreground uppercase opacity-50">FLASH_V2_ACTIVE</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -274,19 +269,15 @@ export default function FleetNexusPage() {
         </header>
 
         <main className="flex-1 overflow-hidden flex flex-col p-4 space-y-4 z-10">
-          {/* Status Grid */}
           <div className="grid grid-cols-2 gap-3">
             <Card className="p-3 border-white/5 bg-white/5 hover:bg-white/10 transition-all group relative overflow-hidden rounded-2xl">
               <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50" />
               <div className="flex items-center gap-2 mb-2">
                 <Wifi className={cn("w-3 h-3 text-primary", isSyncing && "animate-pulse")} />
-                <span className="text-[8px] font-black text-primary uppercase tracking-widest">Fleet_Stream</span>
+                <span className="text-[8px] font-black text-primary uppercase tracking-widest">Fleet_Sync</span>
               </div>
               <div className="text-[11px] font-bold text-foreground/90 truncate uppercase tracking-tighter">
-                {isSyncing ? "Syncing..." : "Fleet Unified"}
-              </div>
-              <div className="text-[7px] text-muted-foreground font-mono mt-1 opacity-50">
-                SYNC_CLK: {new Date().toLocaleTimeString()}
+                {isSyncing ? "Scanning Fleet..." : "Tabs Unified"}
               </div>
             </Card>
 
@@ -295,19 +286,15 @@ export default function FleetNexusPage() {
               <div className="flex items-center gap-2 mb-2">
                 <Fingerprint className={cn("w-3 h-3", geoStatus.mode === 'rotational' ? "text-accent" : "text-primary")} />
                 <span className={cn("text-[8px] font-black uppercase tracking-widest", geoStatus.mode === 'rotational' ? "text-accent" : "text-primary")}>
-                  {geoStatus.mode === 'rotational' ? 'Identity_Mask' : 'Identity_Lock'}
+                  {geoStatus.mode === 'rotational' ? 'Mask_On' : 'Identity_Locked'}
                 </span>
               </div>
               <div className="text-[11px] font-bold text-foreground/90 truncate tracking-tight">
                 {geoStatus.ip}
               </div>
-              <div className="text-[7px] text-muted-foreground font-mono mt-1 opacity-50 uppercase">
-                LOC: {geoStatus.location}
-              </div>
             </Card>
           </div>
 
-          {/* Prompt Entry */}
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-accent rounded-2xl blur opacity-10 group-focus-within:opacity-30 transition-opacity" />
             <div className="relative bg-black/40 border border-white/10 p-4 rounded-2xl space-y-3">
@@ -317,6 +304,7 @@ export default function FleetNexusPage() {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleStartAutomation()}
+                suppressHydrationWarning
               />
               <Button 
                 onClick={handleStartAutomation}
@@ -328,33 +316,26 @@ export default function FleetNexusPage() {
                 ) : (
                   <Zap className="w-3.5 h-3.5 mr-2 fill-current" />
                 )}
-                {isGenerating ? "Synthesizing..." : "Initiate Protocol"}
+                {isGenerating ? "Reasoning..." : "Execute Objective"}
               </Button>
             </div>
           </div>
 
-          {/* Progression */}
-          {activeTask && (activeTask.status === 'running' || activeTask.status === 'intervention_required' || activeTask.status === 'paused') && (
+          {activeTask && (activeTask.status === 'running' || activeTask.status === 'paused') && (
             <div className="space-y-2 px-1">
               <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-primary/70">
-                <span>Task_Completion</span>
+                <span>Mission_Progress</span>
                 <span className="font-mono">{Math.round(((activeTask.currentStepIndex + 1) / activeTask.steps.length) * 100)}%</span>
               </div>
               <Progress value={((activeTask.currentStepIndex + 1) / activeTask.steps.length) * 100} className="h-1 bg-white/5 [&>div]:bg-primary shadow-[0_0_10px_rgba(0,255,255,0.1)] rounded-full" />
             </div>
           )}
 
-          {/* Terminal Console */}
           <div className="flex-1 flex flex-col min-h-0 bg-black/60 border border-white/5 rounded-3xl p-5 font-mono text-[10px] relative shadow-2xl backdrop-blur-md">
             <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
               <div className="flex items-center gap-3">
                 <Terminal className="w-4 h-4 text-primary" />
                 <span className="text-[8px] font-black uppercase tracking-[0.4em] text-muted-foreground/50">Runtime_Kernel_Logs</span>
-              </div>
-              <div className="flex gap-2">
-                <div className="w-2 h-2 rounded-full bg-red-500/20 border border-red-500/10" />
-                <div className="w-2 h-2 rounded-full bg-yellow-500/20 border border-yellow-500/10" />
-                <div className="w-2 h-2 rounded-full bg-green-500/20 border border-green-500/10" />
               </div>
             </div>
             
@@ -377,7 +358,7 @@ export default function FleetNexusPage() {
                 {(isGenerating || isSyncing) && (
                   <div className="flex items-center gap-4 text-primary mt-4">
                     <div className="w-2 h-2 bg-primary rounded-full animate-ping" />
-                    <span className="text-[9px] font-black animate-pulse uppercase tracking-[0.2em]">Processing_Data_Buffer...</span>
+                    <span className="text-[9px] font-black animate-pulse uppercase tracking-[0.2em]">Synthesizing...</span>
                   </div>
                 )}
               </div>

@@ -1,8 +1,7 @@
 'use server';
 /**
- * @fileOverview This file implements a Genkit flow to interpret natural language
- * prompts and generate a browser automation workflow. It focuses on tasks like
- * survey completion and anti-disqualification strategies.
+ * @fileOverview This file implements an agentic Genkit flow to interpret natural language
+ * prompts and generate a high-fidelity browser automation workflow.
  *
  * - generateAutomationFromPrompt - A function that handles the automation workflow generation process.
  * - GenerateAutomationFromPromptInput - The input type for the generateAutomationFromPrompt function.
@@ -24,6 +23,8 @@ const GenerateAutomationFromPromptOutputSchema = z
     workflowSteps: z
       .array(z.string())
       .describe('An array of steps describing the browser automation workflow.'),
+    reasoning: z.string().describe('The AI reasoning for the chosen multi-step plan.'),
+    estimatedRisk: z.enum(['low', 'medium', 'high']).describe('Risk level for disqualification or detection.'),
   })
   .describe('The generated browser automation workflow.');
 export type GenerateAutomationFromPromptOutput = z.infer<
@@ -40,21 +41,22 @@ const automationPrompt = ai.definePrompt({
   name: 'generateAutomationPrompt',
   input: {schema: GenerateAutomationFromPromptInputSchema},
   output: {schema: GenerateAutomationFromPromptOutputSchema},
-  prompt: `You are an AI assistant specialized in generating detailed browser automation workflows.
+  prompt: `You are a high-level AI Browser Agent specialized in cross-tab, deep-DOM automation.
 
-Given a natural language description of a task, interpret it and generate a step-by-step browser automation workflow in JSON format. Each step should be a clear, concise instruction for a browser automation agent.
+Your objective is to translate user requests into a mission-critical sequence of operations. You have access to a "Fleet Context" (multi-tab/multi-window state) and "Deep DOM" (Shadow DOM and cross-origin frames).
 
-Focus on common browser interactions such as navigating to URLs, clicking buttons or links, typing text into input fields, selecting options from dropdowns, and handling forms. When specifying selectors, use general descriptions if specific IDs or classes are not known (e.g., 'the submit button', 'the text input for email').
+### Strategy Guidelines:
+1. **Multi-Tab Coordination**: If a task involves multiple sites, explicitly include "Switch Tab" or "Navigate" steps to manage context.
+2. **Deep Interaction**: Use specific interaction verbs: "Click element", "Type text into field", "Scroll to section", "Touch element" (for mobile-emulated targets), "Extract data".
+3. **Anti-Disqualification (Surveys/Forms)**:
+   - Identify "attention checks" and handle them with consistent, non-patterned responses.
+   - Suggest pauses or "Wait" steps between high-velocity actions.
+   - Maintain identity stability for single-account tasks; suggest IP rotation ONLY for multi-account swarms.
+4. **Resilience**: If a specific ID or Class is likely to be dynamic (e.g., React/Next obfuscation), describe the element by its role, placeholder, or proximity (e.g., "The blue login button inside the main header").
 
-For survey completion tasks, consider strategies to avoid disqualification. This might include:
-- Varying response times to appear more human.
-- Providing consistent (but not overly generic) answers across related questions.
-- Recognizing and adapting to skip logic or conditional questions.
-- Handling common survey question types (e.g., multiple choice, open text, rating scales).
+User Objective: {{{prompt}}}
 
-The output MUST be a JSON object with a single key 'workflowSteps', which is an array of strings. Each string in the array represents one distinct automation step.
-
-User request: {{{prompt}}}`,
+Generate a sophisticated, agentic plan in JSON format.`,
 });
 
 const generateAutomationFromPromptFlow = ai.defineFlow(
