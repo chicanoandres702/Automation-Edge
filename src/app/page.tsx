@@ -5,12 +5,14 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Send, Sparkles, Wand2, Globe, ShieldCheck } from "lucide-react";
+import { Search, Send, Sparkles, Wand2, Globe, ShieldCheck, AlertTriangle } from "lucide-react";
 import { AutomationTask, AutomationStep } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
 import { AutomationHistoryLog } from "@/components/automation/history-log";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+// Static mock data with fixed timestamps for hydration consistency
 const MOCK_TASKS: AutomationTask[] = [
   {
     id: "1",
@@ -53,20 +55,21 @@ export default function Home() {
     try {
       const result = await generateAutomationFromPrompt(prompt);
       
+      const now = Date.now();
       const newSteps: AutomationStep[] = result.workflowSteps.map((s, idx) => ({
-        id: `step-${Date.now()}-${idx}`,
+        id: `step-${now}-${idx}`,
         description: s,
         status: 'pending'
       }));
 
       const newTask: AutomationTask = {
-        id: `task-${Date.now()}`,
+        id: `task-${now}`,
         prompt,
         status: 'running',
         steps: newSteps,
         currentStepIndex: 0,
-        createdAt: Date.now(),
-        updatedAt: Date.now()
+        createdAt: now,
+        updatedAt: now
       };
 
       setActiveTask(newTask);
@@ -138,9 +141,22 @@ export default function Home() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-12">
+          {/* Security Context Alert */}
+          <section className="max-w-4xl mx-auto w-full">
+            <Alert className="bg-primary/5 border-primary/20">
+              <AlertTriangle className="h-4 w-4 text-primary" />
+              <AlertTitle className="text-sm font-bold">Automation Sandbox</AlertTitle>
+              <AlertDescription className="text-xs text-muted-foreground">
+                This dashboard operates in a secure sandbox. Due to browser security restrictions (Same-Origin Policy), 
+                the agent can only interact with DOM content explicitly provided to it. Cross-tab scraping 
+                is simulated for visualization.
+              </AlertDescription>
+            </Alert>
+          </section>
+
           {/* Hero Section with Prompt Input */}
-          <section className="max-w-4xl mx-auto w-full pt-8 md:pt-16 pb-8">
-            <div className="text-center mb-10 space-y-4">
+          <section className="max-w-4xl mx-auto w-full pt-4 pb-8 text-center space-y-10">
+            <div className="space-y-4">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest mb-2">
                 <Sparkles className="w-3.5 h-3.5" />
                 AI-Driven Intelligence
@@ -165,6 +181,7 @@ export default function Home() {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleStartAutomation()}
+                  suppressHydrationWarning
                 />
                 <Button 
                   size="lg"
@@ -191,18 +208,21 @@ export default function Home() {
               <button 
                 onClick={() => setPrompt("Complete the daily rewards survey on Swagbucks")}
                 className="px-3 py-1.5 rounded-full border border-border bg-card/50 text-[10px] font-bold uppercase tracking-wider hover:bg-muted transition-colors"
+                suppressHydrationWarning
               >
                 Survey Example
               </button>
               <button 
                 onClick={() => setPrompt("Check stock for RTX 5090 on NVIDIA store every hour")}
                 className="px-3 py-1.5 rounded-full border border-border bg-card/50 text-[10px] font-bold uppercase tracking-wider hover:bg-muted transition-colors"
+                suppressHydrationWarning
               >
                 Stock Monitor
               </button>
               <button 
                 onClick={() => setPrompt("Analyze page logic for anti-bot measures")}
                 className="px-3 py-1.5 rounded-full border border-border bg-card/50 text-[10px] font-bold uppercase tracking-wider hover:bg-muted transition-colors"
+                suppressHydrationWarning
               >
                 Site Analysis
               </button>
