@@ -8,13 +8,16 @@ import { Button } from "@/components/ui/button";
 import { 
   ShieldCheck, 
   RefreshCw, 
-  Terminal, 
+  Terminal as TerminalIcon, 
   Zap,
   Wifi,
   Fingerprint,
   AlertTriangle,
-  Sparkles,
-  BrainCircuit
+  BrainCircuit,
+  Activity,
+  ChevronUp,
+  ChevronDown,
+  Cpu
 } from "lucide-react";
 import { AutomationTask, AutomationStep, ActionType } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
@@ -32,6 +35,7 @@ export default function FleetNexusPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isReconsidering, setIsReconsidering] = useState(false);
+  const [showTerminal, setShowTerminal] = useState(false);
   const [activeTask, setActiveTask] = useState<AutomationTask | null>(null);
   const [logs, setLogs] = useState<{msg: string, type: 'info' | 'warn' | 'success' | 'system'}[]>([]);
   const [geoStatus, setGeoStatus] = useState({ 
@@ -165,7 +169,6 @@ export default function FleetNexusPage() {
   const executeNextStep = useCallback(async () => {
     if (!activeTask) return;
 
-    // Agentic Reconsideration Phase
     setIsReconsidering(true);
     addLog("Step Complete. Agent Reconsidering Context...", "system");
     
@@ -210,7 +213,6 @@ export default function FleetNexusPage() {
       });
     } catch (err) {
       addLog("Re-evaluation Fault: Defaulting to planned sequence.", "warn");
-      // Fallback to static progression
       setActiveTask(prev => {
         if (!prev) return null;
         const nextIndex = prev.currentStepIndex + 1;
@@ -231,7 +233,7 @@ export default function FleetNexusPage() {
     if (activeTask && activeTask.status === 'running' && !activeTask.manualMode && !isReconsidering) {
       executionTimer.current = setTimeout(() => {
         executeNextStep();
-      }, 3500); // 3.5s cycle for thinking + execution
+      }, 3500);
       return () => {
         if (executionTimer.current) clearTimeout(executionTimer.current);
       };
@@ -249,6 +251,8 @@ export default function FleetNexusPage() {
   };
 
   if (!mounted) return null;
+
+  const lastLog = logs[logs.length - 1];
 
   return (
     <>
@@ -306,7 +310,7 @@ export default function FleetNexusPage() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-hidden flex flex-col p-4 space-y-4 z-10">
+        <main className="flex-1 overflow-hidden flex flex-col p-4 space-y-4 z-10 relative">
           <div className="grid grid-cols-2 gap-3">
             <Card className="p-3 border-white/5 bg-white/5 hover:bg-white/10 transition-all group relative overflow-hidden rounded-2xl">
               <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50" />
@@ -372,40 +376,124 @@ export default function FleetNexusPage() {
             </div>
           )}
 
-          <div className="flex-1 flex flex-col min-h-0 bg-black/60 border border-white/5 rounded-3xl p-5 font-mono text-[10px] relative shadow-2xl backdrop-blur-md">
-            <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
-              <div className="flex items-center gap-3">
-                <Terminal className="w-4 h-4 text-primary" />
-                <span className="text-[8px] font-black uppercase tracking-[0.4em] text-muted-foreground/50">Runtime_Kernel_Logs</span>
-              </div>
+          {/* Dynamic Insight Card replaces Terminal */}
+          <Card className="flex-1 flex flex-col min-h-0 bg-black/60 border border-white/5 rounded-3xl p-6 font-mono relative shadow-2xl backdrop-blur-md group overflow-hidden">
+            <div className="absolute top-0 right-0 p-3">
+              <Activity className={cn("w-4 h-4", activeTask?.status === 'running' ? "text-accent animate-pulse" : "text-muted-foreground/20")} />
             </div>
             
-            <ScrollArea className="flex-1 terminal-scroll">
-              <div className="space-y-2">
-                {logs.map((log, i) => (
-                  <div key={i} className="flex gap-4 leading-relaxed group animate-in fade-in slide-in-from-left-2 duration-300">
-                    <span className="text-white/10 shrink-0 select-none text-[8px] font-mono">[{i.toString().padStart(3, '0')}]</span>
-                    <span className={cn(
-                      "transition-colors break-all tracking-tight",
-                      log.type === 'success' ? 'text-accent' : 
-                      log.type === 'warn' ? 'text-destructive/80 font-bold' : 
-                      log.type === 'system' ? 'text-primary/90 italic' :
-                      'text-foreground/70'
-                    )}>
-                      {log.type === 'system' ? '>> ' : ''}{log.msg}
-                    </span>
+            <div className="flex flex-col h-full space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
+                  <BrainCircuit className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[8px] font-black text-primary uppercase tracking-[0.4em]">Agent_Insight</span>
+                  <span className="text-[10px] font-bold text-foreground/80">Gemini 3.0 Flash Cognitive State</span>
+                </div>
+              </div>
+
+              <div className="flex-1 space-y-4">
+                <div className="space-y-1.5">
+                  <span className="text-[7px] font-black text-muted-foreground uppercase tracking-widest opacity-50">Current_Analysis</span>
+                  <p className="text-[11px] font-bold leading-relaxed text-foreground/90 animate-in fade-in slide-in-from-bottom-1 duration-500">
+                    {lastLog?.msg || "Waiting for mission parameters..."}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <span className="text-[7px] font-black text-muted-foreground uppercase tracking-widest opacity-50">Integrity</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full w-full bg-accent/60" />
+                      </div>
+                      <span className="text-[9px] font-bold text-accent">Stable</span>
+                    </div>
                   </div>
-                ))}
-                {(isGenerating || isSyncing || isReconsidering) && (
-                  <div className="flex items-center gap-4 text-primary mt-4">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-ping" />
-                    <span className="text-[9px] font-black animate-pulse uppercase tracking-[0.2em]">
-                       {isReconsidering ? "Reconsidering Strategy..." : "Synthesizing Protocol..."}
-                    </span>
+                  <div className="space-y-1.5">
+                    <span className="text-[7px] font-black text-muted-foreground uppercase tracking-widest opacity-50">Latency</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full w-[30%] bg-primary/60" />
+                      </div>
+                      <span className="text-[9px] font-bold text-primary">0.8s</span>
+                    </div>
+                  </div>
+                </div>
+
+                {isReconsidering && (
+                  <div className="p-3 bg-primary/5 border border-primary/10 rounded-xl flex items-center gap-3 animate-pulse">
+                    <RefreshCw className="w-3 h-3 text-primary animate-spin" />
+                    <span className="text-[9px] font-black text-primary uppercase tracking-widest">Re-evaluating Strategy...</span>
                   </div>
                 )}
               </div>
-            </ScrollArea>
+
+              <Button 
+                variant="ghost" 
+                onClick={() => setShowTerminal(true)}
+                className="w-full h-10 rounded-xl bg-white/5 hover:bg-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground border border-white/5 group-hover:border-primary/20 group-hover:text-primary transition-all"
+              >
+                <TerminalIcon className="w-3.5 h-3.5 mr-2" />
+                Open System Kernel
+              </Button>
+            </div>
+          </Card>
+
+          {/* Animated Terminal Drawer */}
+          <div className={cn(
+            "fixed inset-0 z-[100] transition-all duration-500 flex flex-col pointer-events-none",
+            showTerminal ? "bg-black/80 backdrop-blur-md opacity-100" : "bg-transparent opacity-0"
+          )}>
+            <div className={cn(
+              "mt-auto w-full max-h-[70vh] bg-background border-t border-white/10 rounded-t-[2.5rem] p-6 shadow-2xl transition-transform duration-500 pointer-events-auto flex flex-col",
+              showTerminal ? "translate-y-0" : "translate-y-full"
+            )}>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
+                    <Cpu className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">System_Kernel</span>
+                    <span className="text-[8px] font-mono text-muted-foreground uppercase opacity-50">Log_Buffer_4096_KB</span>
+                  </div>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setShowTerminal(false)}
+                  className="rounded-full hover:bg-white/10"
+                >
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                </Button>
+              </div>
+
+              <ScrollArea className="flex-1 terminal-scroll font-mono text-[10px]">
+                <div className="space-y-3 pb-8">
+                  {logs.map((log, i) => (
+                    <div key={i} className="flex gap-4 leading-relaxed group animate-in fade-in slide-in-from-left-2 duration-300">
+                      <span className="text-white/10 shrink-0 select-none text-[8px] font-mono">[{i.toString().padStart(3, '0')}]</span>
+                      <span className={cn(
+                        "transition-colors break-all tracking-tight",
+                        log.type === 'success' ? 'text-accent' : 
+                        log.type === 'warn' ? 'text-destructive/80 font-bold' : 
+                        log.type === 'system' ? 'text-primary/90 italic' :
+                        'text-foreground/70'
+                      )}>
+                        {log.type === 'system' ? '>> ' : ''}{log.msg}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+              
+              <div className="mt-4 pt-4 border-t border-white/5 flex justify-between items-center text-[8px] font-mono text-muted-foreground/30">
+                <span>BUFFER_STABLE_READY</span>
+                <span>CTRL_Z_TERMINATE</span>
+              </div>
+            </div>
           </div>
         </main>
       </SidebarInset>
