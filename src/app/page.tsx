@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -11,9 +12,8 @@ import {
   Terminal, 
   Zap,
   Wifi,
-  MapPin,
-  AlertTriangle,
-  Fingerprint
+  Fingerprint,
+  AlertTriangle
 } from "lucide-react";
 import { AutomationTask, AutomationStep, ActionType } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
@@ -177,7 +177,6 @@ export default function FleetNexusPage() {
 
       addLog(`Executing Step ${nextIndex + 1}: ${nextStep.description}`, "info");
       
-      // If we are in manual mode, we pause after each step
       const nextStatus = prev.manualMode ? 'paused' : 'running';
       
       return { 
@@ -188,6 +187,11 @@ export default function FleetNexusPage() {
       };
     });
   }, [addLog]);
+
+  const handleReorderSteps = (newSteps: AutomationStep[]) => {
+    setActiveTask(prev => prev ? { ...prev, steps: newSteps, updatedAt: Date.now() } : null);
+    addLog("Workflow stack reordered by operator.", "system");
+  };
 
   useEffect(() => {
     if (activeTask && activeTask.status === 'running' && !activeTask.manualMode) {
@@ -238,6 +242,7 @@ export default function FleetNexusPage() {
         }}
         onStep={executeNextStep}
         onIntervene={handleManualIntervention}
+        onReorder={handleReorderSteps}
         manualMode={manualMode}
         onToggleManual={(val) => {
           setManualMode(val);
@@ -271,7 +276,7 @@ export default function FleetNexusPage() {
         <main className="flex-1 overflow-hidden flex flex-col p-4 space-y-4 z-10">
           {/* Status Grid */}
           <div className="grid grid-cols-2 gap-3">
-            <Card className="p-3 border-white/5 bg-white/5 hover:bg-white/10 transition-all group relative overflow-hidden">
+            <Card className="p-3 border-white/5 bg-white/5 hover:bg-white/10 transition-all group relative overflow-hidden rounded-2xl">
               <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50" />
               <div className="flex items-center gap-2 mb-2">
                 <Wifi className={cn("w-3 h-3 text-primary", isSyncing && "animate-pulse")} />
@@ -285,7 +290,7 @@ export default function FleetNexusPage() {
               </div>
             </Card>
 
-            <Card className="p-3 border-white/5 bg-white/5 hover:bg-white/10 transition-all group relative overflow-hidden">
+            <Card className="p-3 border-white/5 bg-white/5 hover:bg-white/10 transition-all group relative overflow-hidden rounded-2xl">
                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-accent/50 to-transparent opacity-50" />
               <div className="flex items-center gap-2 mb-2">
                 <Fingerprint className={cn("w-3 h-3", geoStatus.mode === 'rotational' ? "text-accent" : "text-primary")} />
@@ -304,11 +309,11 @@ export default function FleetNexusPage() {
 
           {/* Prompt Entry */}
           <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-accent rounded-xl blur opacity-10 group-focus-within:opacity-30 transition-opacity" />
-            <div className="relative bg-black/40 border border-white/10 p-3 rounded-xl space-y-3">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-accent rounded-2xl blur opacity-10 group-focus-within:opacity-30 transition-opacity" />
+            <div className="relative bg-black/40 border border-white/10 p-4 rounded-2xl space-y-3">
               <Input 
                 placeholder="Declare high-level mission objective..."
-                className="bg-transparent border-none focus-visible:ring-1 focus-visible:ring-primary/30 text-[11px] h-9 placeholder:text-muted-foreground/30 font-medium"
+                className="bg-transparent border-none focus-visible:ring-1 focus-visible:ring-primary/30 text-[11px] h-10 placeholder:text-muted-foreground/30 font-medium"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleStartAutomation()}
@@ -316,7 +321,7 @@ export default function FleetNexusPage() {
               <Button 
                 onClick={handleStartAutomation}
                 disabled={isGenerating || !prompt.trim() || isSyncing}
-                className="w-full h-9 rounded-lg bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-[0.2em] shadow-lg hover:shadow-primary/20 transition-all active:scale-[0.98]"
+                className="w-full h-10 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-[0.2em] shadow-lg hover:shadow-primary/20 transition-all active:scale-[0.98]"
               >
                 {isGenerating ? (
                   <RefreshCw className="w-4 h-4 animate-spin mr-2" />
@@ -335,44 +340,44 @@ export default function FleetNexusPage() {
                 <span>Task_Completion</span>
                 <span className="font-mono">{Math.round(((activeTask.currentStepIndex + 1) / activeTask.steps.length) * 100)}%</span>
               </div>
-              <Progress value={((activeTask.currentStepIndex + 1) / activeTask.steps.length) * 100} className="h-1 bg-white/5 [&>div]:bg-primary shadow-[0_0_10px_rgba(0,255,255,0.1)]" />
+              <Progress value={((activeTask.currentStepIndex + 1) / activeTask.steps.length) * 100} className="h-1 bg-white/5 [&>div]:bg-primary shadow-[0_0_10px_rgba(0,255,255,0.1)] rounded-full" />
             </div>
           )}
 
           {/* Terminal Console */}
-          <div className="flex-1 flex flex-col min-h-0 bg-black/60 border border-white/5 rounded-xl p-4 font-mono text-[10px] relative shadow-2xl backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
-              <div className="flex items-center gap-2">
-                <Terminal className="w-3.5 h-3.5 text-primary" />
+          <div className="flex-1 flex flex-col min-h-0 bg-black/60 border border-white/5 rounded-3xl p-5 font-mono text-[10px] relative shadow-2xl backdrop-blur-md">
+            <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
+              <div className="flex items-center gap-3">
+                <Terminal className="w-4 h-4 text-primary" />
                 <span className="text-[8px] font-black uppercase tracking-[0.4em] text-muted-foreground/50">Runtime_Kernel_Logs</span>
               </div>
-              <div className="flex gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-red-500/10" />
-                <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/10" />
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500/10" />
+              <div className="flex gap-2">
+                <div className="w-2 h-2 rounded-full bg-red-500/20 border border-red-500/10" />
+                <div className="w-2 h-2 rounded-full bg-yellow-500/20 border border-yellow-500/10" />
+                <div className="w-2 h-2 rounded-full bg-green-500/20 border border-green-500/10" />
               </div>
             </div>
             
             <ScrollArea className="flex-1 terminal-scroll">
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {logs.map((log, i) => (
-                  <div key={i} className="flex gap-3 leading-relaxed group">
-                    <span className="text-white/10 shrink-0 select-none text-[8px]">[{i.toString().padStart(3, '0')}]</span>
+                  <div key={i} className="flex gap-4 leading-relaxed group animate-in fade-in slide-in-from-left-2 duration-300">
+                    <span className="text-white/10 shrink-0 select-none text-[8px] font-mono">[{i.toString().padStart(3, '0')}]</span>
                     <span className={cn(
-                      "transition-colors break-all",
+                      "transition-colors break-all tracking-tight",
                       log.type === 'success' ? 'text-accent' : 
                       log.type === 'warn' ? 'text-destructive/80 font-bold' : 
                       log.type === 'system' ? 'text-primary/90 italic' :
-                      'text-foreground/60'
+                      'text-foreground/70'
                     )}>
                       {log.type === 'system' ? '>> ' : ''}{log.msg}
                     </span>
                   </div>
                 ))}
                 {(isGenerating || isSyncing) && (
-                  <div className="flex items-center gap-3 text-primary mt-3">
-                    <div className="w-1.5 h-1.5 bg-primary rounded-full animate-ping" />
-                    <span className="text-[8px] font-black animate-pulse uppercase tracking-[0.2em]">Processing_Data_Buffer...</span>
+                  <div className="flex items-center gap-4 text-primary mt-4">
+                    <div className="w-2 h-2 bg-primary rounded-full animate-ping" />
+                    <span className="text-[9px] font-black animate-pulse uppercase tracking-[0.2em]">Processing_Data_Buffer...</span>
                   </div>
                 )}
               </div>
