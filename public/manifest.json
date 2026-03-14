@@ -1,12 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "Automaton Deep Edge",
+  "name": "Automaton Deep Agent",
   "version": "1.0.0",
-  "description": "AI Browser Automation with Deep DOM Traversal",
+  "description": "AI Browser Automation Sidebar with Multi-Tab Deep DOM Traversal",
   "permissions": [
     "sidePanel",
     "activeTab",
     "scripting",
+    "tabs",
+    "windows",
     "storage"
   ],
   "host_permissions": [
@@ -16,6 +18,6 @@
     "default_path": "index.html"
   },
   "action": {
-    "default_title": "Open Automaton Console"
+    "default_title": "Open Automaton Sidebar"
   }
 }

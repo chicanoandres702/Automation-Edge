@@ -1,5 +1,6 @@
 /**
- * Utility for deep DOM serialization including Shadow DOM and Frame traversal.
+ * Utility for deep DOM serialization including Shadow DOM, Frame traversal, 
+ * and Multi-tab/Window context aggregation.
  */
 
 export interface SerializedNode {
@@ -12,11 +13,23 @@ export interface SerializedNode {
   selector?: string;
 }
 
+export interface GlobalContext {
+  windows: {
+    id: number;
+    tabs: {
+      id: number;
+      title: string;
+      url: string;
+      frames: string[];
+    }[];
+  }[];
+}
+
 export const DEEP_TRAVERSAL_SCRIPT = `
   (function() {
     function getSelector(el) {
       if (el.id) return '#' + el.id;
-      if (el.className) {
+      if (el.className && typeof el.className === 'string') {
         const classes = Array.from(el.classList).join('.');
         if (classes) return el.tagName.toLowerCase() + '.' + classes;
       }
@@ -24,9 +37,10 @@ export const DEEP_TRAVERSAL_SCRIPT = `
     }
 
     function serialize(node) {
+      if (!node) return null;
       if (node.nodeType === Node.TEXT_NODE) {
         const text = node.textContent.trim();
-        return text ? { text } : null;
+        return text ? { text: text.substring(0, 100) } : null;
       }
 
       if (node.nodeType !== Node.ELEMENT_NODE) return null;
@@ -38,39 +52,29 @@ export const DEEP_TRAVERSAL_SCRIPT = `
         children: []
       };
 
-      // Capture essential attributes
-      const attrs = ['id', 'class', 'name', 'placeholder', 'value', 'type', 'role', 'aria-label', 'href'];
+      const attrs = ['id', 'name', 'placeholder', 'type', 'role', 'aria-label'];
       attrs.forEach(attr => {
         if (node.hasAttribute(attr)) {
           obj.attributes[attr] = node.getAttribute(attr);
         }
       });
 
-      // Piercing Shadow DOM
       if (node.shadowRoot) {
-        obj.children.push({
-          isShadowRoot: true,
-          children: Array.from(node.shadowRoot.childNodes).map(serialize).filter(Boolean)
-        });
-      }
-
-      // Handling iFrames (Note: Cross-origin frames return limited info without further injection)
-      if (node.tagName === 'IFRAME') {
-        obj.isFrame = true;
-        try {
-          if (node.contentDocument) {
-            obj.children = Array.from(node.contentDocument.childNodes).map(serialize).filter(Boolean);
-          }
-        } catch (e) {
-          obj.attributes.crossOrigin = 'true';
+        const shadowChildren = Array.from(node.shadowRoot.childNodes)
+          .map(serialize)
+          .filter(Boolean);
+        if (shadowChildren.length > 0) {
+          obj.children.push({ isShadowRoot: true, children: shadowChildren });
         }
       }
 
-      // Standard Children
-      Array.from(node.childNodes).forEach(child => {
-        const s = serialize(child);
-        if (s) obj.children.push(s);
-      });
+      const children = Array.from(node.childNodes)
+        .map(serialize)
+        .filter(Boolean);
+      
+      if (children.length > 0) {
+        obj.children.push(...children);
+      }
 
       return obj;
     }
@@ -79,27 +83,48 @@ export const DEEP_TRAVERSAL_SCRIPT = `
   })();
 `;
 
-export async function captureActiveTabDOM(): Promise<string> {
-  if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.scripting) {
-    console.warn('Chrome extension APIs not available. Returning mock DOM.');
-    return "<html><body><button id='mock'>Mock Element</button></body></html>";
+export async function captureGlobalContext(): Promise<string> {
+  if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.windows) {
+    return "Local Dev Mode: Mocking Multi-Tab Context.";
   }
 
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) throw new Error('No active tab found');
+    const windows = await chrome.windows.getAll({ populate: true });
+    let fullContext = "";
 
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id, allFrames: true },
-      func: () => {
-        // This is a simplified version of the logic above for direct injection
-        return document.body.innerText.substring(0, 5000); // Basic fallback for quick context
+    for (const win of windows) {
+      fullContext += `\n=== WINDOW [ID: ${win.id}] ===\n`;
+      if (!win.tabs) continue;
+
+      for (const tab of win.tabs) {
+        if (!tab.id || tab.url?.startsWith('chrome://')) continue;
+
+        fullContext += `\n--- TAB: ${tab.title} [${tab.url}] ---\n`;
+        
+        try {
+          const results = await chrome.scripting.executeScript({
+            target: { tabId: tab.id, allFrames: true },
+            func: () => {
+              const text = document.body.innerText.substring(0, 2000);
+              const inputs = Array.from(document.querySelectorAll('input, button, select'))
+                .map(el => `[${el.tagName}] ${el.getAttribute('placeholder') || el.innerText || ''}`)
+                .join(', ');
+              return `Content: ${text}\nInteractions: ${inputs}`;
+            }
+          });
+
+          results.forEach((r, idx) => {
+            fullContext += `\n[Frame ${idx}]: ${r.result}\n`;
+          });
+        } catch (e) {
+          fullContext += `\n[Access Denied or Loading]\n`;
+        }
       }
-    });
+    }
 
-    return results.map(r => r.result).join('\\n--- Frame Boundary ---\\n');
+    return fullContext;
   } catch (err) {
-    console.error('Failed to capture DOM:', err);
-    return "Error capturing DOM context.";
+    console.error('Global capture failed:', err);
+    return "Error scanning windows/tabs.";
   }
 }
