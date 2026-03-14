@@ -22,8 +22,8 @@ const MOCK_TASKS: AutomationTask[] = [
       { id: "s3", description: "Enter profile details", status: "completed" }
     ],
     currentStepIndex: 3,
-    createdAt: Date.now() - 3600000,
-    updatedAt: Date.now() - 3000000
+    createdAt: 1739000000000,
+    updatedAt: 1739003600000
   },
   {
     id: "2",
@@ -34,8 +34,8 @@ const MOCK_TASKS: AutomationTask[] = [
       { id: "s5", description: "Verify pricing on bestbuy.com", status: "failed" }
     ],
     currentStepIndex: 1,
-    createdAt: Date.now() - 86400000,
-    updatedAt: Date.now() - 85000000
+    createdAt: 1738913600000,
+    updatedAt: 1738915000000
   }
 ];
 

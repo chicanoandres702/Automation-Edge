@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { AutomationTask } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,12 @@ interface HistoryLogProps {
 }
 
 export function AutomationHistoryLog({ tasks }: HistoryLogProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   if (tasks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
@@ -47,7 +54,7 @@ export function AutomationHistoryLog({ tasks }: HistoryLogProps) {
                     <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {formatDistanceToNow(task.createdAt, { addSuffix: true })}
+                        {mounted ? formatDistanceToNow(task.createdAt, { addSuffix: true }) : "Loading..."}
                       </span>
                       <span className="flex items-center gap-1">
                         <Terminal className="w-3 h-3" />
