@@ -1,15 +1,15 @@
+
 {
   "manifest_version": 3,
-  "name": "Automaton Edge",
+  "name": "Automaton Deep Edge",
   "version": "1.0.0",
-  "description": "AI Browser Automation Sidebar Extension",
+  "description": "AI Browser Automation Agent with Deep DOM Awareness",
   "permissions": ["sidePanel", "activeTab", "scripting", "storage"],
   "host_permissions": ["<all_urls>"],
-  "action": {
-    "default_title": "Open Automaton"
-  },
   "side_panel": {
     "default_path": "index.html"
   },
-  "minimum_chrome_version": "114"
+  "action": {
+    "default_title": "Open Automaton Sidebar"
+  }
 }
