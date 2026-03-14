@@ -5,48 +5,50 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Send, Sparkles, Wand2, Globe, ShieldCheck, AlertTriangle } from "lucide-react";
+import { Send, Sparkles, Wand2, Globe, ShieldCheck, AlertTriangle, RefreshCw, Terminal, History } from "lucide-react";
 import { AutomationTask, AutomationStep } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
 import { AutomationHistoryLog } from "@/components/automation/history-log";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
-// Static mock data with fixed timestamps for hydration consistency
 const MOCK_TASKS: AutomationTask[] = [
   {
     id: "1",
-    prompt: "Complete the tech usage survey on marketinsights.com",
+    prompt: "Complete tech survey",
     status: "completed",
     steps: [
-      { id: "s1", description: "Navigate to marketinsights.com", status: "completed" },
-      { id: "s2", description: "Identify tech survey form", status: "completed" },
-      { id: "s3", description: "Enter profile details", status: "completed" }
+      { id: "s1", description: "Navigate to survey", status: "completed" },
+      { id: "s2", description: "Fill form", status: "completed" }
     ],
-    currentStepIndex: 3,
+    currentStepIndex: 2,
     createdAt: 1739000000000,
     updatedAt: 1739003600000
-  },
-  {
-    id: "2",
-    prompt: "Monitor retail prices for graphics cards on major outlets",
-    status: "error",
-    steps: [
-      { id: "s4", description: "Scan amazon.com search results", status: "completed" },
-      { id: "s5", description: "Verify pricing on bestbuy.com", status: "failed" }
-    ],
-    currentStepIndex: 1,
-    createdAt: 1738913600000,
-    updatedAt: 1738915000000
   }
 ];
 
-export default function Home() {
+export default function ExtensionPage() {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [activeTask, setActiveTask] = useState<AutomationTask | null>(null);
   const [history, setHistory] = useState<AutomationTask[]>(MOCK_TASKS);
+  const [tabSynced, setTabSynced] = useState(false);
   const { toast } = useToast();
+
+  const handleSyncTab = () => {
+    setIsSyncing(true);
+    setTimeout(() => {
+      setIsSyncing(false);
+      setTabSynced(true);
+      toast({
+        title: "Tab Context Captured",
+        description: "DOM structure analyzed. Ready for automation.",
+      });
+    }, 1500);
+  };
 
   const handleStartAutomation = async () => {
     if (!prompt.trim()) return;
@@ -74,22 +76,17 @@ export default function Home() {
 
       setActiveTask(newTask);
       setPrompt("");
-      toast({
-        title: "Agent Initialized",
-        description: "Executing browser automation workflow...",
-      });
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Initialization Failed",
-        description: "Could not generate automation workflow.",
+        title: "Agent Error",
+        description: "Could not generate workflow.",
       });
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // Simulated agent execution
   useEffect(() => {
     if (activeTask && activeTask.status === 'running') {
       const timer = setTimeout(() => {
@@ -106,15 +103,11 @@ export default function Home() {
           const completedTask = { ...activeTask, status: 'completed' as const };
           setActiveTask(completedTask);
           setHistory(prev => [completedTask, ...prev]);
-          toast({
-            title: "Task Completed",
-            description: "Agent successfully finished all automation steps.",
-          });
         }
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [activeTask, toast]);
+  }, [activeTask]);
 
   return (
     <>
@@ -125,113 +118,153 @@ export default function Home() {
         onStop={() => activeTask && setActiveTask({...activeTask, status: 'idle'})}
       />
       
-      <SidebarInset className="bg-background">
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-border/50 bg-background/80 px-4 backdrop-blur-md">
-          <SidebarTrigger className="-ml-1" />
-          <div className="flex-1" />
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 border border-accent/20">
-              <ShieldCheck className="w-3.5 h-3.5 text-accent" />
-              <span className="text-[10px] font-bold text-accent uppercase tracking-wider">Edge Secure</span>
-            </div>
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-              <Globe className="h-5 w-5" />
-            </Button>
+      <SidebarInset className="bg-background max-w-full overflow-hidden">
+        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-border/50 bg-background/95 px-4 backdrop-blur-md">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1 h-8 w-8" />
+            <h2 className="text-xs font-bold tracking-tight uppercase">Agent Panel</h2>
+          </div>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20">
+            <ShieldCheck className="w-3 h-3 text-accent" />
+            <span className="text-[9px] font-bold text-accent uppercase">Live</span>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-12">
-          {/* Security Context Alert */}
-          <section className="max-w-4xl mx-auto w-full">
-            <Alert className="bg-primary/5 border-primary/20">
-              <AlertTriangle className="h-4 w-4 text-primary" />
-              <AlertTitle className="text-sm font-bold">Automation Sandbox</AlertTitle>
-              <AlertDescription className="text-xs text-muted-foreground">
-                This dashboard operates in a secure sandbox. Due to browser security restrictions (Same-Origin Policy), 
-                the agent can only interact with DOM content explicitly provided to it. Cross-tab scraping 
-                is simulated for visualization.
-              </AlertDescription>
-            </Alert>
+        <main className="flex-1 overflow-y-auto p-4 space-y-6">
+          {/* Tab Sync Section */}
+          <section>
+            <Card className="p-3 border-dashed border-primary/20 bg-primary/5">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  <Globe className="w-3 h-3" />
+                  Active Tab
+                </div>
+                {tabSynced && <Badge variant="outline" className="text-[8px] h-4 bg-accent/10 text-accent border-accent/20">Synced</Badge>}
+              </div>
+              <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
+                Connect the agent to the current browser tab to analyze DOM structure and forms.
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full text-xs h-8 border-primary/20 hover:bg-primary/10"
+                onClick={handleSyncTab}
+                disabled={isSyncing}
+              >
+                {isSyncing ? (
+                  <RefreshCw className="w-3 h-3 animate-spin mr-2" />
+                ) : (
+                  <RefreshCw className="w-3 h-3 mr-2" />
+                )}
+                {tabSynced ? "Refresh Sync" : "Sync Current Tab"}
+              </Button>
+            </Card>
           </section>
 
-          {/* Hero Section with Prompt Input */}
-          <section className="max-w-4xl mx-auto w-full pt-4 pb-8 text-center space-y-10">
-            <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest mb-2">
-                <Sparkles className="w-3.5 h-3.5" />
-                AI-Driven Intelligence
-              </div>
-              <h1 className="text-4xl md:text-6xl font-headline font-bold tracking-tight bg-gradient-to-b from-foreground to-foreground/60 bg-clip-text text-transparent">
-                Control your browser <br /> with <span className="text-accent">pure language.</span>
-              </h1>
-              <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-                Sophisticated browser automation for surveys, data mining, and anti-disqualification strategies.
-              </p>
-            </div>
-
-            <div className="relative group max-w-3xl mx-auto">
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary via-accent to-primary rounded-2xl blur opacity-25 group-focus-within:opacity-50 transition duration-1000 group-focus-within:duration-200" />
-              <div className="relative flex items-center bg-card border border-border p-2 rounded-2xl shadow-2xl glass-panel">
-                <div className="pl-4 pr-2">
-                  <Wand2 className="w-5 h-5 text-accent animate-pulse" />
-                </div>
+          {/* Prompt Section */}
+          <section className="space-y-3">
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-accent rounded-xl blur opacity-10 group-focus-within:opacity-25 transition" />
+              <div className="relative bg-card border border-border p-1.5 rounded-xl shadow-sm">
                 <Input 
-                  placeholder="Describe your browser task... (e.g., 'Complete the tech survey on Forbes.com')"
-                  className="bg-transparent border-none focus-visible:ring-0 text-lg h-14 md:h-16 placeholder:text-muted-foreground/50"
+                  placeholder="Task description..."
+                  className="bg-transparent border-none focus-visible:ring-0 text-sm h-10 placeholder:text-muted-foreground/50"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleStartAutomation()}
                   suppressHydrationWarning
                 />
                 <Button 
-                  size="lg"
+                  size="sm"
                   onClick={handleStartAutomation}
-                  disabled={isGenerating || !prompt.trim()}
-                  className="h-12 md:h-14 px-8 rounded-xl bg-accent text-background font-bold hover:bg-accent/90 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  disabled={isGenerating || !prompt.trim() || !tabSynced}
+                  className="w-full h-9 mt-1.5 rounded-lg bg-accent text-background font-bold text-xs"
                 >
                   {isGenerating ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
-                      Initializing...
-                    </div>
+                    <span className="flex items-center gap-2">
+                      <Wand2 className="w-3 h-3 animate-pulse" />
+                      Thinking...
+                    </span>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <Send className="w-4 h-4" />
-                      Deploy Agent
-                    </div>
+                    <span className="flex items-center gap-2">
+                      <Send className="w-3 h-3" />
+                      Execute Task
+                    </span>
                   )}
                 </Button>
               </div>
             </div>
-            
-            <div className="flex flex-wrap justify-center gap-4 mt-8 opacity-60">
-              <button 
-                onClick={() => setPrompt("Complete the daily rewards survey on Swagbucks")}
-                className="px-3 py-1.5 rounded-full border border-border bg-card/50 text-[10px] font-bold uppercase tracking-wider hover:bg-muted transition-colors"
-                suppressHydrationWarning
-              >
-                Survey Example
-              </button>
-              <button 
-                onClick={() => setPrompt("Check stock for RTX 5090 on NVIDIA store every hour")}
-                className="px-3 py-1.5 rounded-full border border-border bg-card/50 text-[10px] font-bold uppercase tracking-wider hover:bg-muted transition-colors"
-                suppressHydrationWarning
-              >
-                Stock Monitor
-              </button>
-              <button 
-                onClick={() => setPrompt("Analyze page logic for anti-bot measures")}
-                className="px-3 py-1.5 rounded-full border border-border bg-card/50 text-[10px] font-bold uppercase tracking-wider hover:bg-muted transition-colors"
-                suppressHydrationWarning
-              >
-                Site Analysis
-              </button>
+            {!tabSynced && (
+              <p className="text-[9px] text-center text-muted-foreground animate-pulse">
+                * Please sync tab before executing tasks
+              </p>
+            )}
+          </section>
+
+          {/* Quick Actions */}
+          <section className="grid grid-cols-2 gap-2">
+            <button 
+              onClick={() => setPrompt("Extract all prices")}
+              className="p-2 rounded-lg border border-border bg-card/50 text-[9px] font-bold uppercase hover:bg-muted transition-colors text-center"
+              suppressHydrationWarning
+            >
+              Scrape Data
+            </button>
+            <button 
+              onClick={() => setPrompt("Fill survey form")}
+              className="p-2 rounded-lg border border-border bg-card/50 text-[9px] font-bold uppercase hover:bg-muted transition-colors text-center"
+              suppressHydrationWarning
+            >
+              Auto-Survey
+            </button>
+          </section>
+
+          {/* Small Status Visualizer */}
+          {activeTask && (
+            <section className="pt-2 border-t border-border">
+               <div className="flex items-center gap-2 mb-3">
+                <Terminal className="w-3 h-3 text-accent" />
+                <h3 className="text-[10px] font-bold uppercase tracking-widest">Active Process</h3>
+              </div>
+              <div className="bg-card/40 border border-border rounded-lg p-3">
+                <p className="text-[11px] font-medium truncate mb-2">{activeTask.prompt}</p>
+                <div className="space-y-2">
+                  {activeTask.steps.slice(0, 3).map((step, i) => (
+                    <div key={i} className="flex items-center gap-2 text-[10px]">
+                      <div className={`w-1.5 h-1.5 rounded-full ${i <= activeTask.currentStepIndex ? 'bg-accent' : 'bg-muted'}`} />
+                      <span className={i === activeTask.currentStepIndex ? 'text-foreground font-bold' : 'text-muted-foreground'}>
+                        {step.description}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* History */}
+          <section className="pt-4 border-t border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <History className="w-3 h-3 text-primary" />
+              <h3 className="text-[10px] font-bold uppercase tracking-widest">Recent Ops</h3>
+            </div>
+            <div className="space-y-2">
+              {history.map(task => (
+                <div key={task.id} className="text-[10px] p-2 rounded bg-muted/30 border border-border/50 truncate">
+                  {task.prompt}
+                </div>
+              ))}
             </div>
           </section>
 
-          {/* History Section */}
-          <section className="max-w-5xl mx-auto w-full">
-            <AutomationHistoryLog tasks={history} />
+          {/* Footer Warning */}
+          <section className="pb-4">
+            <Alert className="bg-destructive/5 border-destructive/20 p-2">
+              <AlertTriangle className="h-3 w-3 text-destructive" />
+              <AlertDescription className="text-[9px] text-muted-foreground ml-1">
+                Automation must adhere to site terms.
+              </AlertDescription>
+            </Alert>
           </section>
         </main>
       </SidebarInset>

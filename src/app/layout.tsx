@@ -4,8 +4,8 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'Automaton Edge | AI Browser Automation',
-  description: 'Next-generation browser automation powered by advanced AI.',
+  title: 'Automaton Edge Extension',
+  description: 'AI Browser Automation Sidebar Extension',
 };
 
 export default function RootLayout({
@@ -20,8 +20,8 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-body antialiased bg-background text-foreground selection:bg-accent/30 selection:text-accent">
-        <SidebarProvider defaultOpen={true}>
+      <body className="font-body antialiased bg-background text-foreground selection:bg-accent/30 selection:text-accent overflow-hidden h-screen w-screen">
+        <SidebarProvider defaultOpen={false}>
           {children}
           <Toaster />
         </SidebarProvider>

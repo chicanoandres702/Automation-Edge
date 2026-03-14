@@ -1,7 +1,9 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Set output to 'export' for static browser extension deployment
+  output: 'export',
+  distDir: 'out',
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -9,6 +11,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
+    unoptimized: true, // Required for static export
     remotePatterns: [
       {
         protocol: 'https',
