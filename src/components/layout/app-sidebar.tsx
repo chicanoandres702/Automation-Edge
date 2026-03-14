@@ -9,7 +9,7 @@ import {
 import { AgentVisualizer } from "@/components/automation/visualizer";
 import { AgentControlPanel } from "@/components/automation/control-panel";
 import { AutomationTask } from "@/lib/types";
-import { Cpu, LogOut, User, ShieldCheck, Settings, Fingerprint } from "lucide-react";
+import { Cpu, LogOut, User, ShieldCheck, Settings, Fingerprint, MousePointer2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -53,10 +53,10 @@ export function AppSidebar({
           </Button>
         </div>
 
-        <div className="p-3 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between">
+        <div className="p-3 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between hover:bg-white/10 transition-all cursor-pointer group">
           <div className="flex items-center gap-2">
-            <Fingerprint className="w-3.5 h-3.5 text-primary" />
-            <Label htmlFor="manual-mode" className="text-[10px] font-black uppercase tracking-widest cursor-pointer">Manual Override</Label>
+            <MousePointer2 className="w-3.5 h-3.5 text-primary group-hover:scale-110 transition-transform" />
+            <Label htmlFor="manual-mode" className="text-[10px] font-black uppercase tracking-widest cursor-pointer text-muted-foreground group-hover:text-foreground">Manual Override</Label>
           </div>
           <Switch 
             id="manual-mode" 

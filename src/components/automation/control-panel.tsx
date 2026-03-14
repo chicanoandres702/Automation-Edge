@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Square, Power, Settings2, ChevronRight, AlertCircle } from "lucide-react";
+import { Play, Pause, Square, ChevronRight, AlertCircle } from "lucide-react";
 import { AutomationStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -79,7 +79,7 @@ export function AgentControlPanel({
             onClick={onStep}
             disabled={disabled || isRunning || status === 'completed'}
             variant="outline"
-            className="h-10 flex items-center justify-center gap-2 rounded-xl border-primary/30 text-primary hover:bg-primary/10"
+            className="h-10 flex items-center justify-center gap-2 rounded-xl border-primary/30 text-primary hover:bg-primary/10 shadow-[0_0_15px_rgba(0,255,255,0.05)] active:scale-95 transition-all"
           >
             <ChevronRight className="h-4 w-4" />
             <span className="text-[10px] uppercase font-black">Step</span>

@@ -107,7 +107,6 @@ export default function FleetNexusPage() {
 
     setIsGenerating(true);
     
-    // Analyze prompt for rotational identity needs
     const rotationKeywords = ['survey', 'multi', 'account', 'signup', 'register', 'rewards', 'poll', 'vote'];
     const needsRotation = rotationKeywords.some(kw => prompt.toLowerCase().includes(kw));
     const identityMode = needsRotation ? 'rotational' : 'persistent';
@@ -150,7 +149,7 @@ export default function FleetNexusPage() {
 
       setActiveTask(newTask);
       setPrompt("");
-      addLog(manualMode ? "Task loaded in Manual Mode." : "Mission plan locked. Initializing execution...", "success");
+      addLog(manualMode ? "Task loaded in Manual Mode. Awaiting operator stepping." : "Mission plan locked. Initializing autonomous execution...", "success");
     } catch (error) {
       addLog("Synthesis failed: LLM context error", "warn");
     } finally {
@@ -177,17 +176,21 @@ export default function FleetNexusPage() {
       }
 
       addLog(`Executing Step ${nextIndex + 1}: ${nextStep.description}`, "info");
+      
+      // If we are in manual mode, we pause after each step
+      const nextStatus = prev.manualMode ? 'paused' : 'running';
+      
       return { 
         ...prev, 
         currentStepIndex: nextIndex, 
-        status: prev.manualMode ? 'paused' : 'running',
+        status: nextStatus,
         updatedAt: Date.now() 
       };
     });
   }, [addLog]);
 
   useEffect(() => {
-    if (activeTask && activeTask.status === 'running') {
+    if (activeTask && activeTask.status === 'running' && !activeTask.manualMode) {
       executionTimer.current = setTimeout(() => {
         executeNextStep();
       }, 3000);
@@ -195,7 +198,7 @@ export default function FleetNexusPage() {
         if (executionTimer.current) clearTimeout(executionTimer.current);
       };
     }
-  }, [activeTask?.currentStepIndex, activeTask?.status, executeNextStep]);
+  }, [activeTask?.currentStepIndex, activeTask?.status, activeTask?.manualMode, executeNextStep]);
 
   const handleManualIntervention = (index: number) => {
     addLog(`Manual Override initiated for Step ${index + 1}.`, "system");
@@ -238,6 +241,9 @@ export default function FleetNexusPage() {
         manualMode={manualMode}
         onToggleManual={(val) => {
           setManualMode(val);
+          if (activeTask) {
+            setActiveTask(prev => prev ? { ...prev, manualMode: val } : null);
+          }
           addLog(`System Mode: ${val ? 'Manual Override Active' : 'Fully Autonomous'}`, "system");
         }}
       />
