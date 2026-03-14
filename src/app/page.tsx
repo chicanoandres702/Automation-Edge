@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -15,9 +16,10 @@ import {
   AlertTriangle,
   BrainCircuit,
   Activity,
-  ChevronUp,
   ChevronDown,
-  Cpu
+  Cpu,
+  Layers,
+  Search
 } from "lucide-react";
 import { AutomationTask, AutomationStep, ActionType } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
@@ -26,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { captureGlobalContext } from "@/lib/dom-traversal";
 import { cn } from "@/lib/utils";
 
@@ -253,6 +256,7 @@ export default function FleetNexusPage() {
   if (!mounted) return null;
 
   const lastLog = logs[logs.length - 1];
+  const currentStatus = isGenerating ? "GENERATING" : isSyncing ? "SYNCING" : isReconsidering ? "REVALUATING" : activeTask?.status.toUpperCase() || "IDLE";
 
   return (
     <>
@@ -309,6 +313,43 @@ export default function FleetNexusPage() {
              <ShieldCheck className="w-4 h-4 text-primary" />
           </div>
         </header>
+
+        {/* System Pulse Status Bar */}
+        <div className="px-4 py-2 border-b border-white/5 bg-black/40 backdrop-blur-md flex items-center justify-between z-10">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className={cn(
+                "w-2 h-2 rounded-full transition-all duration-500",
+                (activeTask?.status === 'running' || isSyncing || isGenerating || isReconsidering) ? "bg-accent animate-pulse shadow-[0_0_8px_hsl(var(--accent))]" : "bg-muted-foreground/30"
+              )} />
+              <span className="text-[10px] font-black uppercase tracking-widest text-foreground/70">
+                Status: <span className={cn(
+                  "transition-colors",
+                  (activeTask?.status === 'running' || isSyncing || isGenerating || isReconsidering) ? "text-accent" : "text-primary"
+                )}>
+                  {currentStatus}
+                </span>
+              </span>
+            </div>
+            <Separator orientation="vertical" className="h-4 bg-white/10" />
+            <div className="flex items-center gap-2">
+              <Cpu className="w-3 h-3 text-primary/50" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-foreground/70">
+                Engine: <span className="text-primary">Gemini 3.0 Flash</span>
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <Layers className="w-3 h-3 text-muted-foreground/40" />
+              <span className="text-[9px] font-mono text-muted-foreground/50 uppercase">Fleet Context Map</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Activity className="w-3 h-3 text-accent/50" />
+              <span className="text-[9px] font-mono text-muted-foreground/50">842.1 MB/S</span>
+            </div>
+          </div>
+        </div>
 
         <main className="flex-1 overflow-hidden flex flex-col p-4 space-y-4 z-10 relative">
           <div className="grid grid-cols-2 gap-3">
