@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -19,7 +18,12 @@ import {
   ChevronDown,
   Cpu,
   Layers,
-  Search
+  Search,
+  Box,
+  Orbit,
+  Globe,
+  Database,
+  Lock
 } from "lucide-react";
 import { AutomationTask, AutomationStep, ActionType } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
@@ -53,7 +57,7 @@ export default function FleetNexusPage() {
   const executionTimer = useRef<NodeJS.Timeout | null>(null);
 
   const addLog = useCallback((msg: string, type: 'info' | 'warn' | 'success' | 'system' = 'info') => {
-    setLogs(prev => [...prev.slice(-40), { msg, type }]);
+    setLogs(prev => [...prev.slice(-100), { msg, type }]);
   }, []);
 
   const runGeoIdSync = useCallback(async (forceRotate = false) => {
@@ -99,7 +103,7 @@ export default function FleetNexusPage() {
 
   useEffect(() => {
     setMounted(true);
-    addLog("Nexus_OS v4.2 Loaded: Gemini 3.0 Flash Active", "success");
+    addLog("Nexus_OS v4.2 Initialized: Gemini 3.0 Flash Ready", "success");
     runFleetSync(true);
   }, [addLog, runFleetSync]);
 
@@ -291,99 +295,137 @@ export default function FleetNexusPage() {
         }}
       />
       
-      <SidebarInset className="bg-background max-w-full overflow-hidden flex flex-col h-screen scanline relative">
-        <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/5 bg-background/50 px-4 backdrop-blur-xl z-20">
-          <div className="flex items-center gap-3">
-            <SidebarTrigger className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg transition-colors" />
+      <SidebarInset className="bg-[#050505] max-w-full overflow-hidden flex flex-col h-screen scanline relative">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-black/40 px-6 backdrop-blur-2xl z-20">
+          <div className="flex items-center gap-4">
+            <SidebarTrigger className="h-9 w-9 text-primary hover:bg-primary/20 rounded-xl transition-all neon-glow-primary" />
             <div className="flex flex-col">
-              <h2 className="text-[10px] font-black tracking-[0.4em] uppercase text-primary flex items-center gap-2">
-                <BrainCircuit className="w-2.5 h-2.5" />
-                Gemini_3.0_Agent
+              <h2 className="text-xs font-black tracking-[0.6em] uppercase text-primary flex items-center gap-2 text-glow-primary">
+                <BrainCircuit className="w-3.5 h-3.5 animate-pulse" />
+                Gemini_3.0_Nexus
               </h2>
-              <span className="text-[7px] font-mono text-muted-foreground uppercase opacity-50">AGENTIC_REASONING_ACTIVE</span>
+              <span className="text-[8px] font-mono text-muted-foreground uppercase opacity-60 tracking-[0.2em]">AGENTIC_DEEP_REASONING_v4.2</span>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
              {activeTask?.status === 'intervention_required' && (
-               <div className="flex items-center gap-1.5 px-2 py-0.5 bg-destructive/10 border border-destructive/20 rounded-md animate-pulse">
-                 <AlertTriangle className="w-3 h-3 text-destructive" />
-                 <span className="text-[8px] font-black text-destructive uppercase tracking-wider">Intervention</span>
+               <div className="flex items-center gap-2 px-3 py-1 bg-destructive/20 border border-destructive/40 rounded-full animate-pulse">
+                 <AlertTriangle className="w-4 h-4 text-destructive" />
+                 <span className="text-[10px] font-black text-destructive uppercase tracking-widest">Intervention Required</span>
                </div>
              )}
-             <ShieldCheck className="w-4 h-4 text-primary" />
+             <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
+               <ShieldCheck className="w-4 h-4 text-primary" />
+               <span className="text-[10px] font-black text-primary uppercase tracking-tighter">Secure_Node</span>
+             </div>
           </div>
         </header>
 
-        {/* System Pulse Status Bar */}
-        <div className="px-4 py-2 border-b border-white/5 bg-black/40 backdrop-blur-md flex items-center justify-between z-10">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+        {/* Dynamic Telemetry Status Bar */}
+        <div className="px-6 py-3 border-b border-white/5 bg-black/60 backdrop-blur-xl flex items-center justify-between z-10">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
               <div className={cn(
-                "w-2 h-2 rounded-full transition-all duration-500",
-                (activeTask?.status === 'running' || isSyncing || isGenerating || isReconsidering) ? "bg-accent animate-pulse shadow-[0_0_8px_hsl(var(--accent))]" : "bg-muted-foreground/30"
+                "w-3 h-3 rounded-full transition-all duration-700",
+                (activeTask?.status === 'running' || isSyncing || isGenerating || isReconsidering) 
+                  ? "bg-accent animate-pulse shadow-[0_0_12px_hsl(var(--accent))]" 
+                  : "bg-muted-foreground/40 shadow-inner"
               )} />
-              <span className="text-[10px] font-black uppercase tracking-widest text-foreground/70">
-                Status: <span className={cn(
-                  "transition-colors",
-                  (activeTask?.status === 'running' || isSyncing || isGenerating || isReconsidering) ? "text-accent" : "text-primary"
+              <div className="flex flex-col">
+                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">System_Status</span>
+                <span className={cn(
+                  "text-[10px] font-black uppercase tracking-widest transition-colors",
+                  (activeTask?.status === 'running' || isSyncing || isGenerating || isReconsidering) ? "text-accent text-glow-accent" : "text-primary/70"
                 )}>
                   {currentStatus}
                 </span>
-              </span>
+              </div>
             </div>
-            <Separator orientation="vertical" className="h-4 bg-white/10" />
-            <div className="flex items-center gap-2">
-              <Cpu className="w-3 h-3 text-primary/50" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-foreground/70">
-                Engine: <span className="text-primary">Gemini 3.0 Flash</span>
-              </span>
+            
+            <Separator orientation="vertical" className="h-6 bg-white/10" />
+            
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 bg-primary/10 rounded-lg">
+                <Cpu className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Core_Engine</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-primary">Gemini 3.0 Flash</span>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <Layers className="w-3 h-3 text-muted-foreground/40" />
-              <span className="text-[9px] font-mono text-muted-foreground/50 uppercase">Fleet Context Map</span>
+          
+          <div className="flex items-center gap-8">
+            <div className="flex flex-col items-end">
+              <div className="flex items-center gap-2">
+                <Globe className="w-3 h-3 text-muted-foreground/40" />
+                <span className="text-[9px] font-mono text-muted-foreground/70 uppercase">Fleet Context Map</span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full w-[85%] bg-primary/40 animate-loading" />
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Activity className="w-3 h-3 text-accent/50" />
-              <span className="text-[9px] font-mono text-muted-foreground/50">842.1 MB/S</span>
+            
+            <div className="flex flex-col items-end">
+              <div className="flex items-center gap-2">
+                <Activity className="w-3 h-3 text-accent/50" />
+                <span className="text-[9px] font-mono text-accent/80">982.4 MB/S</span>
+              </div>
+              <span className="text-[8px] font-black text-muted-foreground/30 uppercase tracking-widest">LATENCY_0.4MS</span>
             </div>
           </div>
         </div>
 
-        <main className="flex-1 overflow-hidden flex flex-col p-4 space-y-4 z-10 relative">
-          <div className="grid grid-cols-2 gap-3">
-            <Card className="p-3 border-white/5 bg-white/5 hover:bg-white/10 transition-all group relative overflow-hidden rounded-2xl">
-              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50" />
-              <div className="flex items-center gap-2 mb-2">
-                <Wifi className={cn("w-3 h-3 text-primary", isSyncing && "animate-pulse")} />
-                <span className="text-[8px] font-black text-primary uppercase tracking-widest">Fleet_Sync</span>
+        <main className="flex-1 overflow-hidden flex flex-col p-6 space-y-6 z-10 relative">
+          <div className="grid grid-cols-2 gap-4">
+            <Card className="p-4 border-white/5 bg-white/[0.03] hover:bg-white/[0.05] transition-all group relative overflow-hidden rounded-2xl shadow-2xl backdrop-blur-md">
+              <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent opacity-50" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Wifi className={cn("w-4 h-4 text-primary", isSyncing && "animate-pulse")} />
+                  <span className="text-[9px] font-black text-primary uppercase tracking-[0.3em]">Fleet_Sync</span>
+                </div>
+                <Database className="w-3.5 h-3.5 text-muted-foreground/20" />
               </div>
-              <div className="text-[11px] font-bold text-foreground/90 truncate uppercase tracking-tighter">
-                {isSyncing ? "Scanning Fleet..." : "Tabs Unified"}
+              <div className="text-xs font-bold text-foreground/90 truncate uppercase tracking-tight flex items-center gap-2">
+                {isSyncing ? (
+                  <>
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    Deep Scanning...
+                  </>
+                ) : "All Tabs Unified"}
               </div>
             </Card>
 
-            <Card className="p-3 border-white/5 bg-white/5 hover:bg-white/10 transition-all group relative overflow-hidden rounded-2xl">
-               <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-accent/50 to-transparent opacity-50" />
-              <div className="flex items-center gap-2 mb-2">
-                <Fingerprint className={cn("w-3 h-3", geoStatus.mode === 'rotational' ? "text-accent" : "text-primary")} />
-                <span className={cn("text-[8px] font-black uppercase tracking-widest", geoStatus.mode === 'rotational' ? "text-accent" : "text-primary")}>
-                  {geoStatus.mode === 'rotational' ? 'Mask_On' : 'Identity_Locked'}
-                </span>
+            <Card className="p-4 border-white/5 bg-white/[0.03] hover:bg-white/[0.05] transition-all group relative overflow-hidden rounded-2xl shadow-2xl backdrop-blur-md">
+               <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-accent/60 to-transparent opacity-50" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Fingerprint className={cn("w-4 h-4", geoStatus.mode === 'rotational' ? "text-accent" : "text-primary")} />
+                  <span className={cn("text-[9px] font-black uppercase tracking-[0.3em]", geoStatus.mode === 'rotational' ? "text-accent" : "text-primary")}>
+                    {geoStatus.mode === 'rotational' ? 'Mask_Active' : 'Identity_Locked'}
+                  </span>
+                </div>
+                <Lock className="w-3.5 h-3.5 text-muted-foreground/20" />
               </div>
-              <div className="text-[11px] font-bold text-foreground/90 truncate tracking-tight">
+              <div className="text-xs font-bold text-foreground/90 truncate tracking-widest font-mono">
                 {geoStatus.ip}
               </div>
             </Card>
           </div>
 
           <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-accent rounded-2xl blur opacity-10 group-focus-within:opacity-30 transition-opacity" />
-            <div className="relative bg-black/40 border border-white/10 p-4 rounded-2xl space-y-3">
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary/30 to-accent/30 rounded-[1.5rem] blur opacity-20 group-focus-within:opacity-50 transition-all duration-500" />
+            <div className="relative bg-black/60 border border-white/10 p-6 rounded-[1.25rem] space-y-4 shadow-3xl">
+              <div className="flex items-center gap-3 px-1">
+                <Orbit className="w-4 h-4 text-primary/50 animate-pulse-slow" />
+                <span className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-[0.4em]">Mission_Inject_v3.0</span>
+              </div>
               <Input 
-                placeholder="Declare mission objective..."
-                className="bg-transparent border-none focus-visible:ring-1 focus-visible:ring-primary/30 text-[11px] h-10 placeholder:text-muted-foreground/30 font-medium"
+                placeholder="Declare high-fidelity mission objective..."
+                className="bg-white/[0.03] border-white/10 focus-visible:ring-2 focus-visible:ring-primary/40 text-xs h-12 px-5 placeholder:text-muted-foreground/20 font-medium rounded-xl"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleStartAutomation()}
@@ -392,81 +434,91 @@ export default function FleetNexusPage() {
               <Button 
                 onClick={handleStartAutomation}
                 disabled={isGenerating || !prompt.trim() || isSyncing}
-                className="w-full h-10 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-[0.2em] shadow-lg hover:shadow-primary/20 transition-all active:scale-[0.98]"
+                className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-[0.3em] shadow-[0_0_20px_rgba(0,255,255,0.2)] hover:shadow-[0_0_30px_rgba(0,255,255,0.4)] transition-all active:scale-[0.97] group overflow-hidden relative"
               >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-loading" />
                 {isGenerating ? (
-                  <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                  <RefreshCw className="w-5 h-5 animate-spin mr-3" />
                 ) : (
-                  <Zap className="w-3.5 h-3.5 mr-2 fill-current" />
+                  <Zap className="w-4 h-4 mr-3 fill-current" />
                 )}
-                {isGenerating ? "Reasoning..." : "Execute Objective"}
+                {isGenerating ? "Synthesizing Strategy..." : "Engage Objective"}
               </Button>
             </div>
           </div>
 
           {activeTask && (activeTask.status === 'running' || activeTask.status === 'paused' || activeTask.status === 'intervention_required') && (
-            <div className="space-y-2 px-1">
-              <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-primary/70">
-                <span className="flex items-center gap-2">
-                   {isReconsidering && <BrainCircuit className="w-3 h-3 animate-pulse" />}
-                   {isReconsidering ? "AI_RECONSIDERING..." : "Mission_Progress"}
+            <div className="space-y-3 px-2">
+              <div className="flex justify-between text-[10px] font-black uppercase tracking-[0.2em] text-primary/80">
+                <span className="flex items-center gap-3">
+                   {isReconsidering && <BrainCircuit className="w-4 h-4 text-accent animate-pulse" />}
+                   {isReconsidering ? "AI_RECONSIDERING_PAGE_STATE..." : "Protocol_Evolution_Progress"}
                 </span>
-                <span className="font-mono">{Math.round(((activeTask.currentStepIndex + 1) / activeTask.steps.length) * 100)}%</span>
+                <span className="font-mono text-glow-primary">{Math.round(((activeTask.currentStepIndex + 1) / activeTask.steps.length) * 100)}%</span>
               </div>
-              <Progress value={((activeTask.currentStepIndex + 1) / activeTask.steps.length) * 100} className="h-1 bg-white/5 [&>div]:bg-primary shadow-[0_0_10px_rgba(0,255,255,0.1)] rounded-full" />
+              <div className="relative">
+                <div className="absolute inset-0 blur-sm bg-primary/20 rounded-full" />
+                <Progress value={((activeTask.currentStepIndex + 1) / activeTask.steps.length) * 100} className="h-2 bg-white/5 [&>div]:bg-primary shadow-2xl rounded-full relative overflow-hidden" />
+              </div>
             </div>
           )}
 
-          {/* Dynamic Insight Card replaces Terminal */}
-          <Card className="flex-1 flex flex-col min-h-0 bg-black/60 border border-white/5 rounded-3xl p-6 font-mono relative shadow-2xl backdrop-blur-md group overflow-hidden">
-            <div className="absolute top-0 right-0 p-3">
-              <Activity className={cn("w-4 h-4", activeTask?.status === 'running' ? "text-accent animate-pulse" : "text-muted-foreground/20")} />
+          {/* High-Fidelity Agent Insight Card */}
+          <Card className="flex-1 flex flex-col min-h-0 bg-black/60 border border-white/10 rounded-[2rem] p-8 font-mono relative shadow-3xl backdrop-blur-2xl group overflow-hidden">
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/10 blur-[100px] rounded-full group-hover:bg-primary/20 transition-all duration-700" />
+            <div className="absolute top-0 right-0 p-6">
+              <Activity className={cn("w-5 h-5 transition-all duration-500", activeTask?.status === 'running' ? "text-accent animate-pulse drop-shadow-[0_0_8px_hsl(var(--accent))]" : "text-muted-foreground/20")} />
             </div>
             
-            <div className="flex flex-col h-full space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
-                  <BrainCircuit className="w-5 h-5 text-primary" />
+            <div className="flex flex-col h-full space-y-8">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 neon-glow-primary">
+                  <BrainCircuit className="w-6 h-6 text-primary" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-primary uppercase tracking-[0.4em]">Agent_Insight</span>
-                  <span className="text-[10px] font-bold text-foreground/80">Gemini 3.0 Flash Cognitive State</span>
+                  <span className="text-[10px] font-black text-primary uppercase tracking-[0.5em] text-glow-primary">Agent_Insight_Nexus</span>
+                  <span className="text-xs font-bold text-foreground/90 mt-1 uppercase tracking-tight">Gemini 3.0 Flash Cognitive Stream</span>
                 </div>
               </div>
 
-              <div className="flex-1 space-y-4">
-                <div className="space-y-1.5">
-                  <span className="text-[7px] font-black text-muted-foreground uppercase tracking-widest opacity-50">Current_Analysis</span>
-                  <p className="text-[11px] font-bold leading-relaxed text-foreground/90 animate-in fade-in slide-in-from-bottom-1 duration-500">
-                    {lastLog?.msg || "Waiting for mission parameters..."}
-                  </p>
+              <div className="flex-1 space-y-6">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Box className="w-3 h-3 text-muted-foreground/40" />
+                    <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-[0.3em]">Current_Operation_Analysis</span>
+                  </div>
+                  <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl shadow-inner min-h-[80px]">
+                    <p className="text-xs font-bold leading-relaxed text-foreground/90 animate-in fade-in slide-in-from-bottom-2 duration-700 font-body">
+                      {lastLog?.msg || "Awaiting mission parameters for deep analysis..."}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <span className="text-[7px] font-black text-muted-foreground uppercase tracking-widest opacity-50">Integrity</span>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full w-full bg-accent/60" />
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <span className="text-[8px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40">System_Integrity</span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full w-full bg-gradient-to-r from-accent/40 to-accent animate-pulse-slow" />
                       </div>
-                      <span className="text-[9px] font-bold text-accent">Stable</span>
+                      <span className="text-[10px] font-black text-accent uppercase tracking-widest">Stable</span>
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <span className="text-[7px] font-black text-muted-foreground uppercase tracking-widest opacity-50">Latency</span>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full w-[30%] bg-primary/60" />
+                  <div className="space-y-2">
+                    <span className="text-[8px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40">Reasoning_Latency</span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full w-[25%] bg-gradient-to-r from-primary/40 to-primary" />
                       </div>
-                      <span className="text-[9px] font-bold text-primary">0.8s</span>
+                      <span className="text-[10px] font-black text-primary uppercase tracking-widest">0.8s</span>
                     </div>
                   </div>
                 </div>
 
                 {isReconsidering && (
-                  <div className="p-3 bg-primary/5 border border-primary/10 rounded-xl flex items-center gap-3 animate-pulse">
-                    <RefreshCw className="w-3 h-3 text-primary animate-spin" />
-                    <span className="text-[9px] font-black text-primary uppercase tracking-widest">Re-evaluating Strategy...</span>
+                  <div className="p-4 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center gap-4 animate-pulse shadow-[0_0_20px_rgba(0,255,255,0.05)]">
+                    <RefreshCw className="w-4 h-4 text-primary animate-spin" />
+                    <span className="text-[10px] font-black text-primary uppercase tracking-[0.4em] text-glow-primary">Re-evaluating Tactical Strategy...</span>
                   </div>
                 )}
               </div>
@@ -474,65 +526,75 @@ export default function FleetNexusPage() {
               <Button 
                 variant="ghost" 
                 onClick={() => setShowTerminal(true)}
-                className="w-full h-10 rounded-xl bg-white/5 hover:bg-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground border border-white/5 group-hover:border-primary/20 group-hover:text-primary transition-all"
+                className="w-full h-12 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/60 border border-white/10 hover:border-primary/40 hover:text-primary transition-all duration-300 group"
               >
-                <TerminalIcon className="w-3.5 h-3.5 mr-2" />
-                Open System Kernel
+                <TerminalIcon className="w-4 h-4 mr-3 group-hover:animate-pulse" />
+                Open System Kernel Logs
               </Button>
             </div>
           </Card>
 
-          {/* Animated Terminal Drawer */}
+          {/* Animated System Kernel Drawer */}
           <div className={cn(
-            "fixed inset-0 z-[100] transition-all duration-500 flex flex-col pointer-events-none",
-            showTerminal ? "bg-black/80 backdrop-blur-md opacity-100" : "bg-transparent opacity-0"
+            "fixed inset-0 z-[100] transition-all duration-700 flex flex-col pointer-events-none",
+            showTerminal ? "bg-black/90 backdrop-blur-2xl opacity-100" : "bg-transparent opacity-0"
           )}>
             <div className={cn(
-              "mt-auto w-full max-h-[70vh] bg-background border-t border-white/10 rounded-t-[2.5rem] p-6 shadow-2xl transition-transform duration-500 pointer-events-auto flex flex-col",
+              "mt-auto w-full max-h-[75vh] bg-background border-t border-white/15 rounded-t-[3rem] p-8 shadow-[0_-20px_100px_rgba(0,0,0,0.8)] transition-transform duration-700 ease-out pointer-events-auto flex flex-col relative overflow-hidden",
               showTerminal ? "translate-y-0" : "translate-y-full"
             )}>
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
-                    <Cpu className="w-5 h-5 text-primary" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-1.5 bg-white/10 rounded-full mt-4" />
+              
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 neon-glow-primary">
+                    <Cpu className="w-6 h-6 text-primary" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">System_Kernel</span>
-                    <span className="text-[8px] font-mono text-muted-foreground uppercase opacity-50">Log_Buffer_4096_KB</span>
+                    <span className="text-xs font-black text-primary uppercase tracking-[0.6em] text-glow-primary">System_Kernel_Output</span>
+                    <span className="text-[9px] font-mono text-muted-foreground/50 uppercase tracking-[0.2em] mt-1">Real-Time Log Pipeline :: Buffer 8192_KB</span>
                   </div>
                 </div>
                 <Button 
                   variant="ghost" 
                   size="icon" 
                   onClick={() => setShowTerminal(false)}
-                  className="rounded-full hover:bg-white/10"
+                  className="rounded-full h-12 w-12 hover:bg-white/10 transition-all"
                 >
-                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  <ChevronDown className="w-6 h-6 text-muted-foreground" />
                 </Button>
               </div>
 
-              <ScrollArea className="flex-1 terminal-scroll font-mono text-[10px]">
-                <div className="space-y-3 pb-8">
+              <ScrollArea className="flex-1 terminal-scroll font-mono text-xs">
+                <div className="space-y-4 pb-12">
                   {logs.map((log, i) => (
-                    <div key={i} className="flex gap-4 leading-relaxed group animate-in fade-in slide-in-from-left-2 duration-300">
-                      <span className="text-white/10 shrink-0 select-none text-[8px] font-mono">[{i.toString().padStart(3, '0')}]</span>
+                    <div key={i} className="flex gap-6 leading-relaxed group animate-in fade-in slide-in-from-left-4 duration-500">
+                      <span className="text-white/10 shrink-0 select-none text-[10px] font-mono mt-0.5">[{i.toString().padStart(4, '0')}]</span>
                       <span className={cn(
                         "transition-colors break-all tracking-tight",
-                        log.type === 'success' ? 'text-accent' : 
-                        log.type === 'warn' ? 'text-destructive/80 font-bold' : 
-                        log.type === 'system' ? 'text-primary/90 italic' :
+                        log.type === 'success' ? 'text-accent text-glow-accent font-bold' : 
+                        log.type === 'warn' ? 'text-destructive font-black' : 
+                        log.type === 'system' ? 'text-primary italic opacity-90' :
                         'text-foreground/70'
                       )}>
-                        {log.type === 'system' ? '>> ' : ''}{log.msg}
+                        <span className="mr-2 opacity-50">{log.type === 'system' ? '>>' : '>'}</span>
+                        {log.msg}
                       </span>
                     </div>
                   ))}
                 </div>
               </ScrollArea>
               
-              <div className="mt-4 pt-4 border-t border-white/5 flex justify-between items-center text-[8px] font-mono text-muted-foreground/30">
-                <span>BUFFER_STABLE_READY</span>
-                <span>CTRL_Z_TERMINATE</span>
+              <div className="mt-6 pt-6 border-t border-white/5 flex justify-between items-center text-[10px] font-mono text-muted-foreground/30 uppercase tracking-[0.3em]">
+                <div className="flex items-center gap-4">
+                  <span className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
+                    BUFFER_HEALTH_NOMINAL
+                  </span>
+                  <span>::</span>
+                  <span>SYNC_ACTIVE</span>
+                </div>
+                <span>v4.2.0_STABLE</span>
               </div>
             </div>
           </div>
