@@ -17,7 +17,8 @@ import {
   Cloud,
   ShieldCheck,
   Lock,
-  Unlock
+  Unlock,
+  Search
 } from "lucide-react";
 import { AutomationTask, AutomationStep, ExecutionMemory } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
@@ -66,7 +67,7 @@ export default function NexusControlCenter() {
 
   // Agent Loop Execution
   useEffect(() => {
-    if (activeTask?.status === 'running') {
+    if (activeTask?.status === 'running' || activeTask?.status === 'seeking') {
       const timer = setTimeout(async () => {
         await executeNextStep();
       }, 1500);
@@ -96,7 +97,7 @@ export default function NexusControlCenter() {
         if (missionSnap.exists()) {
           missionMemory = missionSnap.data().memory || [];
           if (missionMemory.length > 0 && activeTask.currentStepIndex === 0) {
-            addLog(`Progressive Continuity: Loaded ${missionMemory.length} historical nodes.`, "system");
+            addLog(`Progressive Continuity: Loaded ${missionMemory.length} historical nodes for ${activeTask.missionContext}.`, "system");
           }
         }
       }
@@ -119,6 +120,15 @@ export default function NexusControlCenter() {
         setIsInterventionOpen(true);
         setActiveTask(prev => prev ? { ...prev, status: 'intervention_required' } : null);
         return;
+      }
+
+      // Autonomous context discovery logic
+      if (activeTask.status === 'seeking' && result.reasoning.includes("Identified mission:")) {
+        const discoveredId = result.reasoning.split("Identified mission:")[1].trim().split(" ")[0];
+        setMissionId(discoveredId);
+        setIsNeuralLocked(true);
+        addLog(`Discovery Successful: Neural Lock established for ${discoveredId}`, "success");
+        setActiveTask(prev => prev ? { ...prev, missionContext: discoveredId, status: 'running' } : null);
       }
 
       const nextStepIndex = activeTask.currentStepIndex + 1;
@@ -167,11 +177,15 @@ export default function NexusControlCenter() {
         sharedToolHostnames 
       });
 
-      // Neural Lock Activation
+      // Neural Lock Activation or Discovery
+      let initialStatus: AutomationTask['status'] = 'running';
       if (result.neuralLock.missionId) {
         setMissionId(result.neuralLock.missionId);
         setIsNeuralLocked(true);
         addLog(`Neural Lock Active: ${result.neuralLock.missionId}`, "system");
+      } else if (result.neuralLock.isAmbiguous) {
+        initialStatus = 'seeking';
+        addLog(`Ambiguous Context: Agent in Discovery Mode.`, "warn");
       }
 
       // Register newly discovered shared tools
@@ -191,7 +205,7 @@ export default function NexusControlCenter() {
       const newSteps: AutomationStep[] = result.workflowSteps.map((s, idx) => ({
         id: `step-${now}-${idx}`,
         description: s,
-        type: 'wait',
+        type: s.toLowerCase().includes('wait') ? 'wait' : s.toLowerCase().includes('click') ? 'click' : 'navigate',
         status: 'pending',
         retryCount: 0,
         maxRetries: 3
@@ -200,7 +214,7 @@ export default function NexusControlCenter() {
       setActiveTask({
         id: `task-${now}`,
         prompt,
-        status: 'running',
+        status: initialStatus,
         steps: newSteps,
         currentStepIndex: 0,
         observedTabs: [],
@@ -212,7 +226,7 @@ export default function NexusControlCenter() {
       });
       
       setPrompt("");
-      addLog(`Mission Initiated. Siloed Memory Active.`, "success");
+      addLog(`Mission Initiated. Progressive continuity layer active.`, "success");
     } catch (error) {
       addLog("Synthesis failure. Check neural link.", "warn");
     } finally {
@@ -278,14 +292,15 @@ export default function NexusControlCenter() {
           <div className="flex items-center gap-3">
              <div className={cn(
                "flex items-center gap-2 px-2 py-1 rounded-md border transition-colors",
-               isNeuralLocked ? "bg-primary/10 border-primary/30" : "bg-white/5 border-white/5"
+               isNeuralLocked ? "bg-primary/10 border-primary/30" : 
+               activeTask?.status === 'seeking' ? "bg-yellow-500/10 border-yellow-500/30" : "bg-white/5 border-white/5"
              )}>
-                {isNeuralLocked ? <Lock className="w-2.5 h-2.5 text-primary" /> : <Unlock className="w-2.5 h-2.5 text-muted-foreground" />}
+                {isNeuralLocked ? <Lock className="w-2.5 h-2.5 text-primary" /> : activeTask?.status === 'seeking' ? <Search className="w-2.5 h-2.5 text-yellow-500 animate-pulse" /> : <Unlock className="w-2.5 h-2.5 text-muted-foreground" />}
                 <span className={cn(
                   "text-[9px] font-black uppercase",
-                  isNeuralLocked ? "text-primary" : "text-muted-foreground"
+                  isNeuralLocked ? "text-primary" : activeTask?.status === 'seeking' ? "text-yellow-500" : "text-muted-foreground"
                 )}>
-                  {isNeuralLocked ? `Locked: ${missionId}` : "Neural Open"}
+                  {isNeuralLocked ? `Locked: ${missionId}` : activeTask?.status === 'seeking' ? "Seeking Context..." : "Neural Open"}
                 </span>
              </div>
              <SettingsIcon className="w-4 h-4 text-muted-foreground hover:text-primary cursor-pointer transition-colors" />
@@ -293,14 +308,13 @@ export default function NexusControlCenter() {
         </header>
 
         <main className="flex-1 flex flex-col min-h-0 z-10 relative p-4 md:p-6 space-y-4">
-          {/* Streamlined Mission Entry */}
           <div className="max-w-5xl mx-auto w-full">
             <Card className="p-1 bg-background/40 backdrop-blur-xl border-white/5 rounded-2xl shadow-2xl overflow-hidden ring-1 ring-white/10">
               <div className="flex flex-col sm:flex-row gap-2 p-2">
                 <div className="relative group flex-1">
                   <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40 group-focus-within:text-primary transition-colors" />
                   <Input 
-                    placeholder="Input objective (e.g. Write essay for SWK-2400)..."
+                    placeholder="Input objective (e.g. Complete Capella assignments)..."
                     className="bg-transparent border-none text-sm h-12 pl-10 focus-visible:ring-0"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
@@ -322,7 +336,6 @@ export default function NexusControlCenter() {
           </div>
 
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
-            {/* Primary Task Viewport - Largest Section */}
             <div className="lg:col-span-8 flex flex-col min-h-0 space-y-3">
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-2">
@@ -332,8 +345,11 @@ export default function NexusControlCenter() {
                 {activeTask && (
                    <div className="flex items-center gap-2">
                      <span className="text-[8px] font-bold text-muted-foreground uppercase">Context Silo:</span>
-                     <span className="text-[9px] font-black text-primary px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
-                       {activeTask.missionContext || 'Universal'}
+                     <span className={cn(
+                       "text-[9px] font-black px-2 py-0.5 rounded border",
+                       activeTask.status === 'seeking' ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-500" : "bg-primary/10 border-primary/20 text-primary"
+                     )}>
+                       {activeTask.status === 'seeking' ? 'Scanning Dashboard...' : activeTask.missionContext || 'Universal'}
                      </span>
                    </div>
                 )}
@@ -347,7 +363,6 @@ export default function NexusControlCenter() {
               </div>
             </div>
 
-            {/* Persistence Logs - Collapsed on smaller screens */}
             <div className="lg:col-span-4 hidden md:flex flex-col min-h-0 space-y-3">
               <div className="flex items-center gap-2 px-2">
                 <Terminal className="w-4 h-4 text-accent" />
@@ -367,13 +382,13 @@ export default function NexusControlCenter() {
                            <div className={cn(
                              "w-1 h-3 mt-1 rounded-full shrink-0",
                              log.type === 'success' ? 'bg-accent' : 
-                             log.type === 'warn' ? 'bg-destructive' : 
+                             log.type === 'warn' ? 'bg-yellow-500' : 
                              log.type === 'system' ? 'bg-primary' : 'bg-muted-foreground/30'
                            )} />
                            <p className={cn(
                              "text-[10px] font-mono leading-relaxed",
                              log.type === 'success' ? 'text-accent' : 
-                             log.type === 'warn' ? 'text-destructive' : 
+                             log.type === 'warn' ? 'text-yellow-500' : 
                              log.type === 'system' ? 'text-primary' : 'text-muted-foreground'
                            )}>
                              {log.msg}
@@ -388,7 +403,6 @@ export default function NexusControlCenter() {
           </div>
         </main>
 
-        {/* Neural Link Modal */}
         <Dialog open={isInterventionOpen} onOpenChange={setIsInterventionOpen}>
           <DialogContent className="bg-background/95 border-primary/20 backdrop-blur-3xl max-w-md rounded-3xl">
             <DialogHeader>
