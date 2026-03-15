@@ -1,8 +1,10 @@
+
 import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/toaster";
+import { FirebaseClientProvider } from "@/firebase/client-provider";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -11,7 +13,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Automaton Edge Extension",
+  title: "Nexus Fleet Extension",
   description: "AI Browser Automation Sidebar Extension",
 };
 
@@ -23,10 +25,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${spaceGrotesk.variable} dark`} suppressHydrationWarning>
       <body className="font-body antialiased bg-background text-foreground selection:bg-accent/30 selection:text-accent overflow-hidden h-screen w-screen">
-        <SidebarProvider defaultOpen={false}>
-          {children}
-          <Toaster />
-        </SidebarProvider>
+        <FirebaseClientProvider>
+          <SidebarProvider defaultOpen={false}>
+            {children}
+            <Toaster />
+          </SidebarProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

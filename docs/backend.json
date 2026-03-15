@@ -1,0 +1,48 @@
+
+{
+  "entities": {
+    "MissionContext": {
+      "title": "Mission Context",
+      "description": "Stores state and memory for a specific mission (e.g. Course SWK-2400).",
+      "type": "object",
+      "properties": {
+        "missionId": { "type": "string", "description": "Unique identifier for the mission (e.g. Course Code)." },
+        "memory": { 
+          "type": "array", 
+          "items": { 
+            "type": "object",
+            "properties": {
+              "step": { "type": "string" },
+              "result": { "type": "string" },
+              "timestamp": { "type": "number" }
+            }
+          }
+        },
+        "updatedAt": { "type": "number" }
+      }
+    },
+    "PlatformTool": {
+      "title": "Platform Tool",
+      "description": "Stores shared knowledge for a universal tool (e.g. Google Docs).",
+      "type": "object",
+      "properties": {
+        "toolId": { "type": "string", "description": "The classified tool identifier." },
+        "hostname": { "type": "string" },
+        "isShared": { "type": "boolean", "default": true }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/missions/{missionId}": {
+      "schema": "MissionContext",
+      "description": "Project-specific progressive continuity storage."
+    },
+    "/tools/{toolId}": {
+      "schema": "PlatformTool",
+      "description": "Shared tool infrastructure knowledge."
+    }
+  }
+}
