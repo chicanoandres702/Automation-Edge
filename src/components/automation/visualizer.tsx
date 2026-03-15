@@ -53,25 +53,21 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
 
   if (steps.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground/30 border-2 border-dashed rounded-3xl border-white/5 p-8 text-center animate-in fade-in zoom-in duration-700">
-        <div className="relative mb-6">
-          <PlayCircle className="w-16 h-16 opacity-5 animate-pulse" />
-          <div className="absolute inset-0 bg-primary/10 blur-2xl rounded-full" />
-        </div>
-        <p className="font-black uppercase tracking-[0.4em] leading-relaxed text-[10px] text-primary/40">
-          Nexus_Standby<br/>Awaiting_Mission_Inject
+      <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-2xl border-white/5 p-4 text-center">
+        <PlayCircle className="w-10 h-10 opacity-5 mb-3" />
+        <p className="font-black uppercase tracking-widest text-[8px] text-primary/40">
+          Standby_Inject_Required
         </p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-black/20 rounded-3xl border border-white/5 overflow-hidden shadow-2xl backdrop-blur-sm">
-      {/* Table Header */}
-      <div className="grid grid-cols-[30px_1fr_60px] gap-2 px-4 py-3 bg-white/5 border-b border-white/5 text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">
+    <div className="flex flex-col h-full bg-black/20 rounded-2xl border border-white/5 overflow-hidden shadow-xl">
+      <div className="grid grid-cols-[30px_1fr_40px] gap-2 px-3 py-2 bg-white/5 text-[7px] font-black uppercase tracking-widest text-muted-foreground/50">
         <div className="flex justify-center">#</div>
-        <div>Objective_Operation</div>
-        <div className="text-right">Status</div>
+        <div>Operation</div>
+        <div className="text-right">STS</div>
       </div>
       
       <ScrollArea className="flex-1">
@@ -96,95 +92,65 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           className={cn(
-                            "group relative grid grid-cols-[30px_1fr_60px] gap-2 px-4 py-4 transition-all duration-500 items-start",
-                            isActive ? "bg-primary/5 shadow-[inset_0_0_30px_rgba(0,255,255,0.03)]" : "hover:bg-white/[0.02]",
-                            snapshot.isDragging && "bg-white/10 scale-[1.02] rotate-1 shadow-2xl z-50",
+                            "group relative grid grid-cols-[30px_1fr_40px] gap-2 px-3 py-3 items-start transition-all",
+                            isActive ? "bg-primary/5" : "hover:bg-white/[0.01]",
+                            snapshot.isDragging && "bg-white/10 scale-105 z-50",
                             isPending && "opacity-40"
                           )}
                         >
-                          {/* Drag Handle (Hover only) */}
                           <div 
                             {...provided.dragHandleProps}
-                            className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-primary/30 cursor-grab active:cursor-grabbing"
+                            className="absolute -left-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 text-primary/20 cursor-grab"
                           >
-                            <GripVertical className="w-3.5 h-3.5" />
+                            <GripVertical className="w-3 h-3" />
                           </div>
 
-                          {/* Index / Counter */}
-                          <div className="flex flex-col items-center pt-0.5">
+                          <div className="flex flex-col items-center">
                             <span className={cn(
-                              "text-[8px] font-mono transition-colors",
+                              "text-[8px] font-mono",
                               isActive ? "text-primary font-black" : "text-muted-foreground/30"
                             )}>
-                              {index.toString().padStart(2, '0')}
+                              {index + 1}
                             </span>
-                            {isActive && (
-                              <div className="w-1 h-1 bg-primary rounded-full mt-2 animate-ping" />
-                            )}
                           </div>
 
-                          {/* Step Content */}
-                          <div className="space-y-1.5 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <div className={cn(
-                                "flex items-center gap-1.5 px-1.5 py-0.5 rounded border text-[7px] font-black uppercase tracking-widest transition-all",
-                                isActive ? "bg-primary/20 border-primary/40 text-primary shadow-[0_0_10px_rgba(0,255,255,0.1)]" : "bg-white/5 border-white/10 text-muted-foreground/50"
-                              )}>
-                                {getActionIcon(step.type)}
-                                {step.type}
-                              </div>
-                              {needsReview && (
-                                <div className="flex items-center gap-1 text-[7px] font-black text-destructive uppercase animate-pulse">
-                                  <AlertCircle className="w-2.5 h-2.5" />
-                                  Review_Needed
-                                </div>
-                              )}
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex items-center gap-1.5 px-1 py-0.5 rounded border border-white/5 bg-white/5 w-fit">
+                              {getActionIcon(step.type)}
+                              <span className="text-[6px] font-black uppercase tracking-tighter">{step.type}</span>
                             </div>
                             <p className={cn(
-                              "text-[10px] font-bold leading-relaxed tracking-tight break-words transition-colors",
-                              isActive ? "text-foreground" : isCompleted ? "text-muted-foreground/40" : "text-muted-foreground"
+                              "text-[9px] font-bold leading-tight truncate pr-2",
+                              isActive ? "text-foreground" : "text-muted-foreground"
                             )}>
                               {step.description}
                             </p>
                             
-                            {isActive && (
-                              <div className="flex items-center gap-2 pt-1 animate-in fade-in slide-in-from-left-2">
-                                <ArrowRight className="w-2.5 h-2.5 text-primary animate-pulse" />
-                                <span className="text-[7px] font-black text-primary/60 uppercase tracking-[0.2em] animate-pulse">
-                                  Executing_Protocol_V3
-                                </span>
-                              </div>
-                            )}
-
                             {needsReview && onIntervene && (
                                <Button 
                                  variant="ghost" 
                                  size="sm" 
-                                 className="h-7 mt-2 w-full text-[8px] font-black uppercase bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 rounded-xl"
+                                 className="h-6 mt-1 w-full text-[7px] font-black uppercase bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 rounded-lg"
                                  onClick={() => onIntervene(index)}
                                >
-                                 <Eye className="w-3 h-3 mr-2" />
-                                 Manual_Action_Required
+                                 Intervene
                                </Button>
                             )}
                           </div>
 
-                          {/* Status Column */}
-                          <div className="flex justify-end pt-0.5">
+                          <div className="flex justify-end">
                             <div className={cn(
-                              "w-5 h-5 rounded-full flex items-center justify-center transition-all",
-                              isActive ? "text-primary" : 
-                              isCompleted ? "text-accent/40" : 
-                              "text-muted-foreground/20"
+                              "w-4 h-4 rounded-full flex items-center justify-center",
+                              isActive ? "text-primary" : isCompleted ? "text-accent/40" : "text-muted-foreground/20"
                             )}>
                               {needsReview ? (
-                                <AlertCircle className="w-4 h-4 text-destructive animate-bounce" />
+                                <AlertCircle className="w-3 h-3 text-destructive animate-bounce" />
                               ) : isActive ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-3 h-3 animate-spin" />
                               ) : isCompleted ? (
-                                <CheckCircle2 className="w-4 h-4" />
+                                <CheckCircle2 className="w-3 h-3" />
                               ) : (
-                                <Circle className="w-2.5 h-2.5" />
+                                <Circle className="w-2 h-2" />
                               )}
                             </div>
                           </div>
@@ -199,17 +165,6 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
           </Droppable>
         </DragDropContext>
       </ScrollArea>
-      
-      {/* Table Footer / Summary */}
-      <div className="p-3 bg-white/5 border-t border-white/5 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shadow-[0_0_8px_hsl(var(--accent))]" />
-          <span className="text-[8px] font-black text-accent uppercase tracking-widest">Runtime_Stable</span>
-        </div>
-        <div className="text-[8px] font-mono text-muted-foreground/30 uppercase">
-          {steps.filter(s => s.status === 'completed').length}/{steps.length} OPS_RESOLVED
-        </div>
-      </div>
     </div>
   );
 }
