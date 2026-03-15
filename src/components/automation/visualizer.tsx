@@ -1,3 +1,4 @@
+
 "use client";
 
 import { AutomationStep } from "@/lib/types";
@@ -59,23 +60,23 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
 
   if (steps.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-xl border-white/5 p-8 text-center bg-white/[0.01]">
-        <div className="w-12 h-12 rounded-full bg-primary/5 flex items-center justify-center mb-4">
-          <PlayCircle className="w-6 h-6 text-primary opacity-20" />
+      <div className="flex flex-col items-center justify-center h-full border-2 border-dashed rounded-3xl border-white/5 p-8 text-center bg-white/[0.01]">
+        <div className="w-16 h-16 rounded-full bg-primary/5 flex items-center justify-center mb-6">
+          <PlayCircle className="w-8 h-8 text-primary opacity-30 animate-pulse" />
         </div>
-        <p className="font-black uppercase tracking-[0.2em] text-[10px] text-muted-foreground/40">
-          Standby for mission injection
+        <p className="font-black uppercase tracking-[0.2em] text-[10px] text-muted-foreground/50 max-w-[200px]">
+          Mission standby. Awaiting tactical injection.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-white/[0.02] rounded-xl border border-white/5 overflow-hidden shadow-2xl">
-      <div className="grid grid-cols-[40px_1fr_60px] gap-2 px-4 py-3 bg-white/[0.03] text-[8px] font-black uppercase tracking-widest text-muted-foreground border-b border-white/5">
-        <div className="flex justify-center">#</div>
-        <div>Tactical Step</div>
-        <div className="text-right">Status</div>
+    <div className="flex flex-col h-full bg-background/40 backdrop-blur-sm rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
+      <div className="grid grid-cols-[50px_1fr_70px] gap-2 px-6 py-4 bg-white/[0.03] text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 border-b border-white/5">
+        <div className="flex justify-center">Node</div>
+        <div>Tactical Sequence</div>
+        <div className="text-right">Sync</div>
       </div>
       
       <ScrollArea className="flex-1 custom-scrollbar">
@@ -102,46 +103,46 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           className={cn(
-                            "group relative grid grid-cols-[40px_1fr_60px] gap-2 px-4 py-4 items-start transition-colors",
-                            isActive ? "bg-primary/5 shadow-inner" : "hover:bg-white/[0.01]",
-                            snapshot.isDragging && "bg-white/10 scale-[1.02] z-50 rounded-lg border-primary/20 shadow-2xl",
-                            isPending && "opacity-30 grayscale-[0.5]"
+                            "group relative grid grid-cols-[50px_1fr_70px] gap-2 px-6 py-5 items-start transition-all",
+                            isActive ? "bg-primary/[0.03] ring-1 ring-inset ring-primary/20" : "hover:bg-white/[0.02]",
+                            snapshot.isDragging && "bg-background/90 scale-[1.02] z-50 rounded-2xl border-primary/40 shadow-2xl ring-2 ring-primary/40",
+                            isPending && "opacity-30 grayscale-[0.8]"
                           )}
                         >
                           <div 
                             {...provided.dragHandleProps}
-                            className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-2 text-primary/30 cursor-grab"
+                            className="absolute left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-2 text-primary/40 cursor-grab"
                           >
                             <GripVertical className="w-4 h-4" />
                           </div>
 
                           <div className="flex flex-col items-center">
                             <span className={cn(
-                              "text-[10px] font-mono",
-                              isActive ? "text-primary font-black" : "text-muted-foreground/50"
+                              "text-xs font-mono font-bold",
+                              isActive ? "text-primary" : "text-muted-foreground/40"
                             )}>
-                              {index + 1}
+                              {(index + 1).toString().padStart(2, '0')}
                             </span>
                           </div>
 
-                          <div className="space-y-2 min-w-0">
+                          <div className="space-y-2.5 min-w-0">
                             <div className="flex items-center gap-2">
                               <div className={cn(
-                                "flex items-center gap-1.5 px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-tight",
-                                isActive ? "bg-primary/10 border-primary/20 text-primary" : "bg-white/5 border-white/5 text-muted-foreground"
+                                "flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[8px] font-black uppercase tracking-tight",
+                                isActive ? "bg-primary/10 border-primary/20 text-primary" : "bg-white/5 border-white/5 text-muted-foreground/60"
                               )}>
                                 {getActionIcon(step.type)}
                                 {step.type}
                               </div>
                               {step.retryCount > 0 && (
-                                <span className="text-[7px] font-black text-accent uppercase tracking-widest bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20">
-                                  Retry {step.retryCount}
+                                <span className="text-[7px] font-black text-accent uppercase tracking-widest bg-accent/10 px-1.5 py-0.5 rounded-lg border border-accent/20">
+                                  Recovery {step.retryCount}
                                 </span>
                               )}
                             </div>
                             
                             <p className={cn(
-                              "text-[11px] font-bold leading-relaxed pr-4",
+                              "text-sm font-medium leading-relaxed pr-6",
                               isActive ? "text-foreground" : "text-muted-foreground"
                             )}>
                               {step.description}
@@ -149,20 +150,20 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
                             
                             {needsReview && isCurrent && onIntervene && (
                                <Button 
-                                 variant="ghost" 
+                                 variant="outline" 
                                  size="sm" 
-                                 className="h-7 mt-2 w-full text-[8px] font-black uppercase bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 rounded-md"
+                                 className="h-8 mt-2 w-full text-[9px] font-black uppercase bg-destructive/5 text-destructive border-destructive/20 hover:bg-destructive/10 rounded-xl"
                                  onClick={() => onIntervene(index)}
                                 >
-                                 Respond to Operator Link
+                                 Neural Response Required
                                </Button>
                             )}
                           </div>
 
                           <div className="flex justify-end pt-1">
                             <div className={cn(
-                              "w-5 h-5 rounded-full flex items-center justify-center",
-                              isActive ? "text-primary" : isCompleted ? "text-accent" : "text-muted-foreground/20"
+                              "w-6 h-6 rounded-full flex items-center justify-center transition-colors",
+                              isActive ? "bg-primary/10 text-primary" : isCompleted ? "bg-accent/10 text-accent" : "bg-white/5 text-muted-foreground/20"
                             )}>
                               {needsReview && isCurrent ? (
                                 <AlertCircle className="w-4 h-4 text-destructive animate-pulse" />
@@ -173,7 +174,7 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
                               ) : isCompleted ? (
                                 <CheckCircle2 className="w-4 h-4" />
                               ) : (
-                                <Circle className="w-3 h-3" />
+                                <Circle className="w-2.5 h-2.5" />
                               )}
                             </div>
                           </div>

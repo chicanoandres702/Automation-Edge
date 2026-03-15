@@ -1,0 +1,11 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "agent-portrait",
+      "description": "A high-tech holographic portrait of an AI agent silhouette, blue and cyan tones, cinematic lighting.",
+      "imageUrl": "https://picsum.photos/seed/nexus-agent/800/1200",
+      "imageHint": "holographic ai portrait"
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -8,16 +9,14 @@ import { Button } from "@/components/ui/button";
 import { 
   Zap,
   Activity,
-  Layers,
-  Database,
-  Cloud,
   Terminal,
   BrainCircuit,
   Settings as SettingsIcon,
   RefreshCw,
   Search,
-  CheckCircle2,
-  AlertCircle
+  Cloud,
+  Layers,
+  Sparkles
 } from "lucide-react";
 import { AutomationTask, AutomationStep, ExecutionMemory } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
@@ -28,8 +27,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AgentVisualizer } from "@/components/automation/visualizer";
 import { captureGlobalContext } from "@/lib/dom-traversal";
 import { cn } from "@/lib/utils";
-import { useFirebase, useUser } from "@/firebase";
+import { useFirebase } from "@/firebase";
 import { doc, setDoc, collection, getDocs, getDoc, arrayUnion } from "firebase/firestore";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 import {
   Dialog,
   DialogContent,
@@ -54,12 +54,12 @@ export default function NexusControlCenter() {
   const [interventionResponse, setInterventionResponse] = useState("");
 
   const addLog = useCallback((msg: string, type: 'info' | 'warn' | 'success' | 'system' = 'info') => {
-    setLogs(prev => [...prev.slice(-50), { msg, type }]);
+    setLogs(prev => [...prev.slice(-30), { msg, type }]);
   }, []);
 
   useEffect(() => {
     setMounted(true);
-    addLog("Nexus Kernel v4.5 Live", "system");
+    addLog("Nexus Kernel v5.0 Initialized", "system");
   }, [addLog]);
 
   // Agent Loop Execution
@@ -67,7 +67,7 @@ export default function NexusControlCenter() {
     if (activeTask?.status === 'running') {
       const timer = setTimeout(async () => {
         await executeNextStep();
-      }, 1500);
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, [activeTask?.status, activeTask?.currentStepIndex]);
@@ -78,15 +78,14 @@ export default function NexusControlCenter() {
     const currentStep = activeTask.steps[activeTask.currentStepIndex];
     if (!currentStep) {
        setActiveTask(prev => prev ? { ...prev, status: 'completed' } : null);
-       addLog("Mission parameters fulfilled.", "success");
+       addLog("All objectives fulfilled.", "success");
        return;
     }
 
     try {
-      addLog(`Analyzing: ${currentStep.description}`, "info");
+      addLog(`Executing: ${currentStep.description}`, "info");
       const stateSnapshot = await captureGlobalContext();
       
-      // Fetch Progressive Continuity Memory
       let missionMemory: ExecutionMemory[] = activeTask.memory;
       if (activeTask.missionContext) {
         const missionRef = doc(db, "missions", activeTask.missionContext);
@@ -97,32 +96,24 @@ export default function NexusControlCenter() {
         }
       }
 
-      // Identify Shared Platform Tools
-      const currentHost = "campus.capella.edu"; // Mocked for extension context
-      const toolRef = doc(db, "tools", currentHost.replace(/\./g, '_'));
-      const toolSnap = await getDoc(toolRef);
-      const platformContext = toolSnap.exists() ? currentHost : undefined;
-
       const result = await contextualSurveyAwareness({
         goal: activeTask.prompt,
         memory: missionMemory,
         surveyContent: stateSnapshot,
         missionContext: activeTask.missionContext,
-        platformContext
       });
 
       if (result.action === 'ASK_USER') {
-        setInterventionQuestion(result.parameters.question || "Operator input required.");
+        setInterventionQuestion(result.parameters.question || "Strategic input required.");
         setIsInterventionOpen(true);
         setActiveTask(prev => prev ? { ...prev, status: 'intervention_required' } : null);
         return;
       }
 
-      // Update State & Persistence
       const nextStepIndex = activeTask.currentStepIndex + 1;
       const stepResult: ExecutionMemory = { 
         step: currentStep.description, 
-        result: `Completed: ${result.action}` 
+        result: `Action ${result.action} Verified` 
       };
 
       if (activeTask.missionContext) {
@@ -141,10 +132,10 @@ export default function NexusControlCenter() {
         updatedAt: Date.now()
       } : null);
 
-      addLog(`Step achieved: ${result.action}`, "success");
+      addLog(`Node Sync: ${result.action}`, "success");
 
     } catch (error) {
-      addLog("Interruption detected. Retrying loop...", "warn");
+      addLog("Stream interrupted. Recovering...", "warn");
     }
   };
 
@@ -152,7 +143,7 @@ export default function NexusControlCenter() {
     if (!prompt.trim()) return;
 
     setIsGenerating(true);
-    addLog(`Synthesizing strategy for ${missionId || 'Global Context'}...`, "info");
+    addLog(`AI Parsing tactical objective...`, "info");
     
     try {
       const toolsSnap = await getDocs(collection(db, "tools"));
@@ -160,18 +151,16 @@ export default function NexusControlCenter() {
 
       const result = await generateAutomationFromPrompt({ 
         prompt, 
-        missionContext: missionId,
+        missionContext: missionId || undefined,
         sharedToolHostnames 
       });
 
-      // Persistent Tool Learning
-      result.classifiedPlatforms.forEach(p => {
-        if (p.type === 'shared_tool') {
-          const toolRef = doc(db, "tools", p.hostname.replace(/\./g, '_'));
-          setDoc(toolRef, { hostname: p.hostname, isShared: true }, { merge: true });
-          addLog(`New shared tool classified: ${p.hostname}`, "system");
-        }
-      });
+      // AI Context Extraction
+      const detectedMission = result.classifiedPlatforms.find(p => p.type === 'mission_specific')?.reason.match(/[A-Z]{2,}-\d{4}/)?.[0] || missionId;
+      if (detectedMission && !missionId) {
+        setMissionId(detectedMission);
+        addLog(`AI context lock: ${detectedMission}`, "system");
+      }
 
       const now = Date.now();
       const newSteps: AutomationStep[] = result.workflowSteps.map((s, idx) => ({
@@ -194,13 +183,13 @@ export default function NexusControlCenter() {
         createdAt: now,
         updatedAt: now,
         identityMode: 'persistent',
-        missionContext: missionId
+        missionContext: detectedMission || missionId
       });
       
       setPrompt("");
-      addLog(`Mission Live. Progressive continuity enabled.`, "success");
+      addLog(`Mission Live. Knowledge siloing active.`, "success");
     } catch (error) {
-      addLog("Synthesis failure. Check network kernel.", "warn");
+      addLog("Synthesis failed. Kernel offline.", "warn");
     } finally {
       setIsGenerating(false);
     }
@@ -208,15 +197,17 @@ export default function NexusControlCenter() {
 
   const handleInterventionSubmit = () => {
     if (!activeTask) return;
-    addLog(`Operator override: ${interventionResponse}`, "system");
+    addLog(`Neural injection received.`, "system");
     setActiveTask({
       ...activeTask,
       status: 'running',
-      memory: [...activeTask.memory, { step: "OPERATOR_LINK", result: interventionResponse }]
+      memory: [...activeTask.memory, { step: "OPERATOR_OVERRIDE", result: interventionResponse }]
     });
     setIsInterventionOpen(false);
     setInterventionResponse("");
   };
+
+  const agentPortrait = PlaceHolderImages.find(img => img.id === 'agent-portrait');
 
   if (!mounted) return null;
 
@@ -233,137 +224,138 @@ export default function NexusControlCenter() {
       />
       
       <SidebarInset className="bg-background flex flex-col h-screen relative overflow-hidden">
-        {/* Header - Practical & Streamlined */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b bg-card/50 px-6 backdrop-blur-xl z-20">
+        {/* Cinematic Portrait Background - Left Aligned & Faded */}
+        <div 
+          className="absolute left-0 top-0 w-1/2 h-full z-0 opacity-20 pointer-events-none transition-opacity duration-1000 hidden lg:block"
+          style={{
+            backgroundImage: `url(${agentPortrait?.imageUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'left center',
+            maskImage: 'linear-gradient(to right, black 40%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to right, black 40%, transparent 100%)',
+          }}
+          data-ai-hint="holographic ai portrait"
+        />
+
+        {/* Streamlined Header */}
+        <header className="flex h-14 shrink-0 items-center justify-between border-b bg-background/50 px-4 md:px-6 backdrop-blur-xl z-20">
           <div className="flex items-center gap-3">
             <SidebarTrigger className="h-8 w-8" />
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-widest text-primary">Nexus Fleet</span>
-              <div className="h-1 w-1 rounded-full bg-muted-foreground/30" />
-              <span className="text-[10px] font-medium text-muted-foreground">v4.5.2</span>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Nexus Fleet</span>
+              <span className="text-[8px] font-medium text-muted-foreground uppercase">Autonomy Active</span>
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
-             <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-accent/10 border border-accent/20">
-                <Cloud className="w-3 h-3 text-accent" />
-                <span className="text-[9px] font-black text-accent uppercase">Persistence Sync</span>
+          <div className="flex items-center gap-3">
+             <div className="hidden sm:flex items-center gap-2 px-2 py-1 rounded-md bg-accent/5 border border-accent/10">
+                <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                <span className="text-[9px] font-black text-accent uppercase">Link Stable</span>
              </div>
              <SettingsIcon className="w-4 h-4 text-muted-foreground hover:text-primary cursor-pointer transition-colors" />
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6 pb-24">
-          {/* Mission Config Area */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="md:col-span-2 p-1 bg-white/[0.02] border-white/5 rounded-xl shadow-2xl">
-              <div className="flex flex-col p-3 gap-3">
-                <div className="flex gap-2">
-                  <div className="w-1/3 relative">
-                    <Layers className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+        <main className="flex-1 flex flex-col min-h-0 z-10 relative">
+          {/* Mission Injection - Streamlined & AI-first */}
+          <div className="p-4 md:p-6 pb-2 space-y-4">
+            <div className="max-w-4xl mx-auto w-full">
+              <Card className="p-1 bg-background/60 backdrop-blur-md border-white/5 rounded-2xl shadow-2xl overflow-hidden">
+                <div className="flex flex-col md:flex-row gap-2 p-2">
+                  <div className="relative group flex-1">
+                    <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40 group-focus-within:text-primary transition-colors" />
                     <Input 
-                      placeholder="Mission Context ID..."
-                      className="bg-background/50 border-white/5 text-xs h-10 pl-9 font-mono focus:ring-1"
-                      value={missionId}
-                      onChange={(e) => setMissionId(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                    <Input 
-                      placeholder="Enter tactical objectives..."
-                      className="bg-background/50 border-white/5 text-xs h-10 pl-9 focus:ring-1"
+                      placeholder="Input mission objectives (e.g. Finish SWK-2400 assignment)..."
+                      className="bg-transparent border-none text-sm h-12 pl-10 focus-visible:ring-0 focus-visible:ring-offset-0"
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleStartMission()}
                     />
                   </div>
-                  <Button 
-                    onClick={handleStartMission} 
-                    disabled={isGenerating} 
-                    className="h-10 px-6 bg-primary text-primary-foreground font-black uppercase text-[10px] tracking-widest"
-                  >
-                    {isGenerating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 fill-current mr-2" />}
-                    {isGenerating ? "Synthesizing" : "Inject"}
-                  </Button>
-                </div>
-              </div>
-            </Card>
-
-            <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
-              <Card className="p-3 bg-white/[0.02] border-white/5 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Database className="w-4 h-4 text-primary" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-muted-foreground uppercase">Persistence Mode</span>
-                  <span className="text-[10px] font-bold text-foreground">Progressive Continuity</span>
-                </div>
-              </Card>
-              <Card className="p-3 bg-white/[0.02] border-white/5 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                  <BrainCircuit className="w-4 h-4 text-accent" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-muted-foreground uppercase">Reasoning Engine</span>
-                  <span className="text-[10px] font-bold text-foreground">Flash 3.0 Experimental</span>
+                  <div className="flex items-center gap-2 border-t md:border-t-0 md:border-l border-white/5 pt-2 md:pt-0 md:pl-2">
+                    <div className="relative w-32 hidden sm:block">
+                      <Layers className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+                      <Input 
+                        placeholder="Context ID"
+                        className="bg-transparent border-none text-[10px] h-10 pl-8 font-mono focus-visible:ring-0"
+                        value={missionId}
+                        onChange={(e) => setMissionId(e.target.value)}
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleStartMission} 
+                      disabled={isGenerating || !prompt.trim()} 
+                      className="h-10 px-6 bg-primary text-primary-foreground font-black uppercase text-[10px] tracking-widest rounded-xl hover:scale-105 transition-transform"
+                    >
+                      {isGenerating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 fill-current mr-2" />}
+                      {isGenerating ? "Syncing" : "Deploy"}
+                    </Button>
+                  </div>
                 </div>
               </Card>
             </div>
           </div>
 
-          {/* Execution & Visualizer */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
-            <div className="lg:col-span-2 space-y-4">
+          {/* Core Telemetry Display - Optimized for Mobile */}
+          <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-6 p-4 md:p-6 pt-0">
+            {/* Task Manager (Operation Matrix) - Largest Element */}
+            <div className="lg:col-span-8 flex flex-col min-h-0 space-y-3">
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-primary animate-pulse" />
+                  <Activity className="w-4 h-4 text-primary" />
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Operation Matrix</h3>
                 </div>
                 {activeTask && (
-                   <span className="text-[9px] font-bold text-primary px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
-                     {activeTask.status.toUpperCase()}
-                   </span>
+                   <div className="flex items-center gap-2">
+                     <span className="text-[8px] font-bold text-muted-foreground uppercase">Context:</span>
+                     <span className="text-[9px] font-black text-primary px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
+                       {activeTask.missionContext || 'Global'}
+                     </span>
+                   </div>
                 )}
               </div>
-              <AgentVisualizer 
-                steps={activeTask?.steps || []} 
-                currentStepIndex={activeTask?.currentStepIndex || 0}
-                status={activeTask?.status || 'idle'}
-              />
+              <div className="flex-1 min-h-0">
+                <AgentVisualizer 
+                  steps={activeTask?.steps || []} 
+                  currentStepIndex={activeTask?.currentStepIndex || 0}
+                  status={activeTask?.status || 'idle'}
+                />
+              </div>
             </div>
 
-            <div className="space-y-4 flex flex-col h-full">
+            {/* Persistence Logs - Streamlined */}
+            <div className="lg:col-span-4 hidden md:flex flex-col min-h-0 space-y-3">
               <div className="flex items-center gap-2 px-2">
                 <Terminal className="w-4 h-4 text-accent" />
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Persistence Stream</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Kernel Stream</h3>
               </div>
-              <Card className="flex-1 bg-black/40 border-white/5 p-4 rounded-xl flex flex-col min-h-[300px]">
+              <Card className="flex-1 bg-black/40 backdrop-blur-md border-white/5 p-4 rounded-2xl flex flex-col min-h-0">
                  <ScrollArea className="flex-1">
-                   <div className="space-y-2">
-                     {logs.map((log, i) => (
-                       <div key={i} className="flex gap-3 items-start animate-in fade-in slide-in-from-left-1">
-                         <div className={cn(
-                           "w-1 h-3 mt-0.5 rounded-full shrink-0",
-                           log.type === 'success' ? 'bg-accent' : 
-                           log.type === 'warn' ? 'bg-destructive' : 
-                           log.type === 'system' ? 'bg-primary' : 'bg-muted-foreground/30'
-                         )} />
-                         <p className={cn(
-                           "text-[10px] font-mono leading-tight",
-                           log.type === 'success' ? 'text-accent' : 
-                           log.type === 'warn' ? 'text-destructive' : 
-                           log.type === 'system' ? 'text-primary' : 'text-muted-foreground'
-                         )}>
-                           {log.msg}
-                         </p>
-                       </div>
-                     ))}
-                     {logs.length === 0 && (
-                       <div className="flex flex-col items-center justify-center h-48 opacity-20">
-                         <Cloud className="w-12 h-12 mb-4" />
-                         <p className="text-[10px] font-mono uppercase tracking-widest">Link Standby</p>
-                       </div>
+                   <div className="space-y-3">
+                     {logs.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 opacity-20">
+                          <Cloud className="w-10 h-10 mb-4" />
+                          <p className="text-[10px] font-mono uppercase tracking-widest text-center">Standby for<br/>Link established</p>
+                        </div>
+                     ) : (
+                       logs.map((log, i) => (
+                         <div key={i} className="flex gap-3 items-start animate-in fade-in slide-in-from-left-1">
+                           <div className={cn(
+                             "w-1 h-3 mt-1 rounded-full shrink-0",
+                             log.type === 'success' ? 'bg-accent' : 
+                             log.type === 'warn' ? 'bg-destructive' : 
+                             log.type === 'system' ? 'bg-primary' : 'bg-muted-foreground/30'
+                           )} />
+                           <p className={cn(
+                             "text-[10px] font-mono leading-relaxed",
+                             log.type === 'success' ? 'text-accent' : 
+                             log.type === 'warn' ? 'text-destructive' : 
+                             log.type === 'system' ? 'text-primary' : 'text-muted-foreground'
+                           )}>
+                             {log.msg}
+                           </p>
+                         </div>
+                       ))
                      )}
                    </div>
                  </ScrollArea>
@@ -372,27 +364,27 @@ export default function NexusControlCenter() {
           </div>
         </main>
 
-        {/* Operator Link Modal */}
+        {/* Neural Link Modal */}
         <Dialog open={isInterventionOpen} onOpenChange={setIsInterventionOpen}>
-          <DialogContent className="bg-card border-primary/20 backdrop-blur-3xl max-w-md">
+          <DialogContent className="bg-background/95 border-primary/20 backdrop-blur-3xl max-w-md rounded-3xl">
             <DialogHeader>
               <DialogTitle className="text-primary font-black uppercase tracking-widest text-sm flex items-center gap-2">
                 <BrainCircuit className="w-5 h-5" />
-                Operator Neural Link
+                Neural Link Injection
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-6 py-4">
-              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5 space-y-2">
-                <span className="text-[8px] font-black text-primary uppercase">Agent Feedback</span>
+              <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-2">
+                <span className="text-[8px] font-black text-primary uppercase">Agent Query</span>
                 <p className="text-xs font-bold text-foreground leading-relaxed italic">
                   "{interventionQuestion}"
                 </p>
               </div>
               <div className="space-y-2">
-                <span className="text-[8px] font-black text-muted-foreground uppercase">Injection Response</span>
+                <span className="text-[8px] font-black text-muted-foreground uppercase">Override Instruction</span>
                 <Input 
-                  placeholder="Resolve tactical ambiguity..."
-                  className="bg-background border-white/10 text-xs h-12"
+                  placeholder="Resolve ambiguity..."
+                  className="bg-background/50 border-white/10 text-xs h-12 rounded-xl focus:ring-1"
                   value={interventionResponse}
                   onChange={(e) => setInterventionResponse(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleInterventionSubmit()}
@@ -400,8 +392,8 @@ export default function NexusControlCenter() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleInterventionSubmit} className="w-full bg-primary text-primary-foreground font-black uppercase text-[10px] tracking-widest py-6">
-                Inject Instruction
+              <Button onClick={handleInterventionSubmit} className="w-full bg-primary text-primary-foreground font-black uppercase text-[10px] tracking-widest py-6 rounded-2xl">
+                Inject Strategic Guidance
               </Button>
             </DialogFooter>
           </DialogContent>
