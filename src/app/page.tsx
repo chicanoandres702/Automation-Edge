@@ -18,19 +18,15 @@ import {
   ChevronDown,
   Cpu,
   Settings as SettingsIcon,
-  MessageSquare,
-  Lock,
-  RotateCcw,
-  Sparkles
+  Sparkles,
+  RotateCcw
 } from "lucide-react";
 import { AutomationTask, AutomationStep, ActionType, AutomationStatus, ExecutionMemory } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
 import { contextualSurveyAwareness } from "@/ai/flows/contextual-survey-awareness";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { AgentVisualizer } from "@/components/automation/visualizer";
 import { captureGlobalContext } from "@/lib/dom-traversal";
 import { cn } from "@/lib/utils";
@@ -143,15 +139,12 @@ export default function FleetNexusPage() {
   };
 
   const detectMissionContext = (p: string): string | undefined => {
-    // Detect Course Codes (e.g. SWK-2400)
     const courseMatch = p.match(/[A-Z]{2,4}-?\d{4}/i);
     if (courseMatch) return courseMatch[0].toUpperCase();
 
-    // Detect Project Tags (e.g. #ProjectAlpha or [MissionX])
     const tagMatch = p.match(/#[A-Za-z0-9]+/i) || p.match(/\[([A-Za-z0-9 ]+)\]/i);
     if (tagMatch) return tagMatch[1] || tagMatch[0];
 
-    // Detect Named Entities (e.g. Project: Marketing)
     const namedMatch = p.match(/(?:Project|Mission|Class|Survey):\s*([A-Za-z0-9 ]+)/i);
     if (namedMatch) return namedMatch[1].trim();
 
@@ -167,7 +160,7 @@ export default function FleetNexusPage() {
     const missionContext = detectMissionContext(prompt);
 
     addLog(`Analysis: ${needsRotation ? 'Masking Required' : 'Stability Prioritized'}`, "system");
-    if (missionContext) addLog(`Mission Compartmentalization: ${missionContext}`, "info");
+    if (missionContext) addLog(`Mission Continuity: Active for ${missionContext}`, "info");
     
     if (needsRotation) {
       await runGeoIdSync(true);
@@ -180,13 +173,16 @@ export default function FleetNexusPage() {
     addLog(`Synthesizing Mission Parameters (Gemini 3.0)...`, "info");
     
     try {
-      const result = await generateAutomationFromPrompt(prompt);
+      const result = await generateAutomationFromPrompt({ 
+        prompt, 
+        missionContext 
+      });
       
       const now = Date.now();
       const newSteps: AutomationStep[] = result.workflowSteps.map((s, idx) => ({
         id: `step-${now}-${idx}`,
         description: s,
-        type: 'wait', // Initially wait for evaluation
+        type: 'wait',
         status: 'pending',
         retryCount: 0,
         maxRetries: 3
@@ -249,7 +245,6 @@ export default function FleetNexusPage() {
         return;
       }
 
-      // Record Memory
       const stepMemory: ExecutionMemory = {
         step: `${reasoningOutput.action} ${reasoningOutput.parameters.selector || reasoningOutput.parameters.tab_id || ''}`,
         result: 'Success'
@@ -261,7 +256,6 @@ export default function FleetNexusPage() {
         const isLastStep = prev.currentStepIndex >= prev.steps.length - 1;
         const updatedSteps = [...prev.steps];
         
-        // Update current step with AI's decided action
         updatedSteps[currentIndex] = { 
           ...currentStep, 
           status: 'completed',
@@ -325,7 +319,6 @@ export default function FleetNexusPage() {
     addLog(`Operator Injection: ${interventionResponse}`, "success");
     setIsInterventionOpen(false);
     if (activeTask) {
-      // Add intervention to memory
       const interventionMemory: ExecutionMemory = {
         step: 'Human Intervention',
         result: interventionResponse
@@ -410,7 +403,6 @@ export default function FleetNexusPage() {
         </div>
 
         <main className="flex-1 overflow-y-auto p-4 space-y-4 z-10 relative">
-          {/* Action Grid */}
           <div className="grid grid-cols-2 gap-2">
             <Card className="p-3 border-white/5 bg-white/[0.03] rounded-xl flex items-center gap-2 cursor-pointer hover:bg-white/[0.06] transition-all" onClick={() => runFleetSync()}>
               <Wifi className={cn("w-3 h-3 text-primary", isSyncing && "animate-spin")} />
@@ -429,7 +421,6 @@ export default function FleetNexusPage() {
             </Card>
           </div>
 
-          {/* Mission Inject Area */}
           <div className="relative group">
             {!activeTask && (
               <div className="absolute -top-6 left-1 flex items-center gap-2 text-[8px] font-black text-primary/40 uppercase tracking-[0.2em] animate-pulse">
@@ -457,14 +448,13 @@ export default function FleetNexusPage() {
             </div>
           </div>
 
-          {/* Task Matrix Area */}
           <div className="flex flex-col min-h-0 space-y-4 pb-20">
             <div className="flex items-center justify-between px-1">
               <div className="flex flex-col gap-0.5">
                 <h3 className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">Matrix_Queue</h3>
                 {activeTask?.missionContext && (
                   <span className="text-[7px] font-black text-accent uppercase tracking-widest bg-accent/10 px-1 rounded w-fit">
-                    Context: {activeTask.missionContext}
+                    Context: {activeTask.missionContext} (Continuous)
                   </span>
                 )}
               </div>
@@ -485,7 +475,6 @@ export default function FleetNexusPage() {
               />
             </div>
 
-            {/* Agent Insights Card */}
             <Card className="bg-black/40 border-white/5 p-4 rounded-2xl relative overflow-hidden group">
                <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-30 transition-opacity">
                   <BrainCircuit className="w-12 h-12 text-primary" />
@@ -509,7 +498,6 @@ export default function FleetNexusPage() {
             </Card>
           </div>
 
-          {/* Intervention Dialog */}
           <Dialog open={isInterventionOpen} onOpenChange={setIsInterventionOpen}>
             <DialogContent className="bg-background border-destructive/20 max-w-[90vw] rounded-3xl p-6">
               <DialogHeader>
@@ -538,7 +526,6 @@ export default function FleetNexusPage() {
             </DialogContent>
           </Dialog>
 
-          {/* Identity Matrix Modal */}
           <Dialog open={isIdentityOpen} onOpenChange={setIsIdentityOpen}>
             <DialogContent className="bg-background border-white/10 max-w-[90vw] rounded-3xl p-6">
               <DialogHeader>
@@ -557,19 +544,11 @@ export default function FleetNexusPage() {
                     <RotateCcw className="w-4 h-4 text-accent" />
                   </Button>
                 </div>
-                <div className="p-4 bg-white/5 border border-white/5 rounded-2xl">
-                  <span className="text-[8px] font-black text-muted-foreground uppercase block mb-1">Status</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                    <span className="text-[10px] font-bold uppercase">{geoStatus.mode} Security</span>
-                  </div>
-                </div>
               </div>
               <Button className="w-full bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase h-12" onClick={() => setIsIdentityOpen(false)}>Close Interface</Button>
             </DialogContent>
           </Dialog>
 
-          {/* Settings Sheet */}
           <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
             <SheetContent side="right" className="bg-background border-white/10 p-6">
               <SheetHeader className="mb-8">
@@ -577,7 +556,6 @@ export default function FleetNexusPage() {
                   <SettingsIcon className="w-5 h-5" />
                   System Kernel
                 </SheetTitle>
-                <SheetDescription className="text-[10px] uppercase font-bold tracking-tighter opacity-40">Nexus_v4.2 Configurations</SheetDescription>
               </SheetHeader>
               <div className="space-y-6">
                  <div className="space-y-2">
@@ -588,13 +566,6 @@ export default function FleetNexusPage() {
                        ))}
                     </div>
                  </div>
-                 <div className="space-y-2">
-                    <label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Sync Frequency</label>
-                    <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
-                       <span className="text-[10px] font-bold">Aggressive</span>
-                       <div className="w-8 h-4 bg-primary/20 rounded-full border border-primary/40" />
-                    </div>
-                 </div>
                  <div className="pt-8">
                     <Button variant="destructive" className="w-full rounded-xl text-[10px] font-black uppercase h-11" onClick={() => setActiveTask(null)}>Purge All State</Button>
                  </div>
@@ -602,7 +573,6 @@ export default function FleetNexusPage() {
             </SheetContent>
           </Sheet>
 
-          {/* Terminal Drawer */}
           <div className={cn(
             "fixed inset-0 z-[100] transition-all duration-500 pointer-events-none",
             showTerminal ? "bg-black/80 backdrop-blur-md opacity-100" : "bg-transparent opacity-0"

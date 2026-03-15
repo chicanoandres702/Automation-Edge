@@ -11,9 +11,10 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-const GenerateAutomationFromPromptInputSchema = z
-  .string()
-  .describe('A natural language description of the desired browser automation task.');
+const GenerateAutomationFromPromptInputSchema = z.object({
+  prompt: z.string().describe('A natural language description of the desired browser automation task.'),
+  missionContext: z.string().optional().describe('The context (e.g. course ID) this automation belongs to.'),
+});
 export type GenerateAutomationFromPromptInput = z.infer<
   typeof GenerateAutomationFromPromptInputSchema
 >;
@@ -41,17 +42,17 @@ const automationPrompt = ai.definePrompt({
   name: 'generateAutomationPrompt',
   input: {schema: GenerateAutomationFromPromptInputSchema},
   output: {schema: GenerateAutomationFromPromptOutputSchema},
-  prompt: `You are an elite AI Browser Agent powered by Gemini 3.0 Flash. Your architecture is specifically optimized for deep-DOM navigation, multi-tab coordination, and persistent mission execution.
+  prompt: `You are an elite AI Browser Agent. Your objective is to translate user requests into a high-fidelity sequence of operations.
 
-Your objective is to translate user requests into an unrestricted, high-fidelity sequence of operations.
+### Progressive Continuity Strategy:
+{{#if missionContext}}Mission Context: {{{missionContext}}}
+When planning this automation, consider that it may build upon previous work within the same context (e.g., a Week 2 assignment building on Week 1). Ensure the steps are logically consistent with a progressive workflow.{{/if}}
 
 ### Strategy Guidelines:
-1. **Unrestricted Execution**: Plan a direct path to the goal regardless of complexity. This includes login procedures, data extraction, and form submissions.
-2. **Security & CAPTCHAs**: Explicitly include steps to identify and autonomously solve CAPTCHAs, bot-detection screens, and security verifications. Do not plan for human intervention on these hurdles.
-3. **Multi-Tab Coordination**: Orchestrate actions across multiple sites. Use "Switch Tab" or "Navigate" to maintain session stability.
-4. **Deep Interaction**: Use specific interaction verbs: "Click element", "Type text", "Scroll to", "Touch", "Extract data".
-5. **Stealth & Resilience**: Identify and bypass bot-detection patterns and attention checks. Insert "Wait" steps to mimic human pacing.
-6. **Verification**: Include logic check steps to confirm that previous actions had the intended effect on the Fleet context.
+1. **Unrestricted Execution**: Plan a direct path to the goal. Include login, extraction, and submission.
+2. **Autonomous Security**: Include steps to identify and solve CAPTCHAs or security verifications autonomously.
+3. **Multi-Tab Coordination**: Orchestrate actions across multiple sites and maintain session stability.
+4. **Resilience**: Plan for verification steps to confirm successful interactions with the Fleet context.
 
 User Objective: {{{prompt}}}
 
