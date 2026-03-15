@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { SettingsDialog } from "@/components/settings/settings-dialog";
 
 export default function NexusControlCenter() {
   const [mounted, setMounted] = useState(false);
@@ -56,6 +57,7 @@ export default function NexusControlCenter() {
   const { toast } = useToast();
   
   const [isInterventionOpen, setIsInterventionOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [interventionQuestion, setInterventionQuestion] = useState("");
   const [interventionResponse, setInterventionResponse] = useState("");
   const [pendingActionData, setPendingActionData] = useState<any>(null);
@@ -285,6 +287,7 @@ export default function NexusControlCenter() {
         onStep={() => {}}
         manualMode={false}
         onToggleManual={() => {}}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
       
       <SidebarInset className="bg-background flex flex-col h-screen relative overflow-hidden">
@@ -323,8 +326,11 @@ export default function NexusControlCenter() {
                   {isNeuralLocked ? `Lock: ${missionId}` : "Neural Open"}
                 </span>
              </div>
-             <div className="p-2 hover:bg-white/5 rounded-full transition-colors cursor-pointer">
-                <SettingsIcon className="w-4 h-4 text-muted-foreground" />
+             <div 
+              className="p-2 hover:bg-white/5 rounded-full transition-all cursor-pointer group"
+              onClick={() => setIsSettingsOpen(true)}
+             >
+                <SettingsIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
              </div>
           </div>
         </header>
@@ -401,7 +407,7 @@ export default function NexusControlCenter() {
         </main>
 
         <Dialog open={isInterventionOpen} onOpenChange={setIsInterventionOpen}>
-          <DialogContent className="bg-background/95 border-primary/20 backdrop-blur-3xl max-w-md rounded-3xl p-8 ring-1 ring-primary/20">
+          <DialogContent className="bg-background/95 border-primary/20 backdrop-blur-3xl max-w-md rounded-3xl p-8 ring-1 ring-primary/20 shadow-2xl">
             <DialogHeader className="mb-6">
               <DialogTitle className="text-primary font-black uppercase tracking-widest text-xs flex items-center gap-3">
                 <BrainCircuit className="w-5 h-5" />
@@ -442,6 +448,8 @@ export default function NexusControlCenter() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
       </SidebarInset>
     </>
   );

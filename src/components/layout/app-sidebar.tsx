@@ -22,7 +22,7 @@ interface AppSidebarProps {
   onStep: () => void;
   manualMode: boolean;
   onToggleManual: (val: boolean) => void;
-  onOpenSettings?: () => void;
+  onOpenSettings: () => void;
 }
 
 export function AppSidebar({ 
@@ -112,7 +112,9 @@ export function AppSidebar({
               <p className="text-[11px] font-black truncate uppercase text-foreground/90">Operator_Alpha</p>
               <p className="text-[8px] text-muted-foreground truncate font-mono uppercase opacity-50">root@nexus</p>
             </div>
-            <LogOut className="w-4 h-4 text-muted-foreground/30 group-hover:text-destructive transition-colors" />
+            <div onClick={onOpenSettings} className="cursor-pointer group">
+               <Settings className="w-4 h-4 text-muted-foreground/30 group-hover:text-primary transition-colors" />
+            </div>
           </div>
           <Button variant="outline" className="w-full justify-start gap-3 border-white/10 bg-transparent text-[10px] font-black uppercase tracking-widest h-11 rounded-xl hover:bg-primary/5 transition-all">
             <ShieldCheck className="w-4 h-4 text-accent" />
