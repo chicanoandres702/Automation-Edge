@@ -3,7 +3,7 @@
   "entities": {
     "MissionContext": {
       "title": "Mission Context",
-      "description": "Stores state and memory for a specific mission (e.g. Course SWK-2400).",
+      "description": "Stores state, memory, and learned success patterns for a specific mission.",
       "type": "object",
       "properties": {
         "missionId": { "type": "string", "description": "Unique identifier for the mission (e.g. Course Code)." },
@@ -15,6 +15,17 @@
               "step": { "type": "string" },
               "result": { "type": "string" },
               "timestamp": { "type": "number" }
+            }
+          }
+        },
+        "learnedPatterns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "actionType": { "type": "string" },
+              "successIndicator": { "type": "string", "description": "DOM selector or text indicating success." },
+              "confidence": { "type": "number" }
             }
           }
         },
@@ -38,7 +49,7 @@
   "firestore": {
     "/missions/{missionId}": {
       "schema": "MissionContext",
-      "description": "Project-specific progressive continuity storage."
+      "description": "Project-specific progressive continuity and learned autonomy storage."
     },
     "/tools/{toolId}": {
       "schema": "PlatformTool",

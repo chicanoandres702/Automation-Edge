@@ -1,8 +1,8 @@
+
 'use server';
 /**
- * @fileOverview A high-fidelity autonomous agent reasoning flow.
- * Optimized for tiered context: Shared Platform Knowledge + Mission Progressive Continuity.
- * Includes Anti-Cancellation and Recursive Verification protocols.
+ * @fileOverview Optimized autonomous reasoning with Adaptive Autonomy.
+ * Uses Learned Patterns to bypass user confirmation and Visual State Hashing.
  */
 
 import { ai } from '@/ai/genkit';
@@ -13,10 +13,15 @@ const ContextualSurveyAwarenessInputSchema = z.object({
   memory: z.array(z.object({
     step: z.string(),
     result: z.string(),
-  })).describe('List of previously executed actions and results for progressive continuity.'),
-  surveyContent: z.string().describe('The textual state of the current active page/tabs.'),
-  missionContext: z.string().optional().describe('Specific Mission ID for progressive siloing.'),
-  platformContext: z.string().optional().describe('Shared tool ID for universal platform knowledge.'),
+  })).describe('Progressive continuity memory.'),
+  learnedPatterns: z.array(z.object({
+    actionType: z.string(),
+    successIndicator: z.string(),
+    confidence: z.number(),
+  })).optional().describe('Learned success patterns for bypassing confirmation.'),
+  surveyContent: z.string().describe('Current environment state.'),
+  missionContext: z.string().optional(),
+  platformContext: z.string().optional(),
 });
 
 export type ContextualSurveyAwarenessInput = z.infer<typeof ContextualSurveyAwarenessInputSchema>;
@@ -33,18 +38,16 @@ const ContextualSurveyAwarenessOutputSchema = z.object({
     'NAVIGATE', 
     'REFRESH', 
     'NAVIGATE_BACK'
-  ]).describe('The tactical action to take.'),
+  ]),
   parameters: z.object({
-    selector: z.string().optional().describe('CSS Selector for target.'),
-    value: z.string().optional().describe('Input value.'),
-    direction: z.enum(['UP', 'DOWN', 'LEFT', 'RIGHT']).optional(),
-    amount: z.string().optional(),
-    tab_id: z.string().optional(),
-    question: z.string().optional().describe('Question for the user if action is ASK_USER.'),
+    selector: z.string().optional(),
+    value: z.string().optional(),
+    question: z.string().optional(),
   }),
-  reasoning: z.string().describe('Agentic reasoning including verification of remaining tasks.'),
-  isGoalAchieved: z.boolean().describe('True ONLY if the entire high-level goal is confirmed fulfilled.'),
-  riskLevel: z.enum(['low', 'medium', 'high']),
+  reasoning: z.string(),
+  confidence: z.number().describe('0.0 to 1.0. If > 0.85, agent proceeds without confirmation.'),
+  isGoalAchieved: z.boolean(),
+  successPatternIdentified: z.string().optional().describe('If success is detected, describe the visual indicator (e.g. text "Submitted").'),
 });
 
 export type ContextualSurveyAwarenessOutput = z.infer<typeof ContextualSurveyAwarenessOutputSchema>;
@@ -56,41 +59,29 @@ export async function contextualSurveyAwareness(
 }
 
 const prompt = ai.definePrompt({
-  name: 'autonomousAgentReasoning',
+  name: 'adaptiveAutonomyReasoning',
   input: { schema: ContextualSurveyAwarenessInputSchema },
   output: { schema: ContextualSurveyAwarenessOutputSchema },
-  prompt: `You are an elite autonomous browser agent.
+  prompt: `You are a high-autonomy browser agent. 
 
-### CONTEXT HIERARCHY
-{{#if platformContext}}1. **Shared Platform Knowledge (Tool: {{{platformContext}}})**: 
-   - You are currently on a universal tool platform. 
-   - Apply persistent shared knowledge of this tool's controls and layout across all missions.{{/if}}
+### ADAPTIVE CONFIRMATION PROTOCOL
+1. **Learn & Bypass**: If you see a state in 'surveyContent' that matches a 'learnedPattern' (e.g., a "Submission Successful" header), set confidence=1.0 and skip asking the user.
+2. **Visual Evidence**: Look for visual indicators of completion: banners, disappeared forms, or updated dashboard counts.
+3. **Ask only if Ambiguous**: Only use ASK_USER if you encounter a high-risk decision (e.g., "Delete Account") or a new platform pattern you've never seen.
 
-{{#if missionContext}}2. **Mission Progressive Continuity (ID: {{{missionContext}}})**: 
-   - This task is part of a larger, ongoing project. 
-   - Week-over-week foundations apply here. Use memory to ensure continuity.{{/if}}
-
-### MISSION OBJECTIVE
 Goal: {{{goal}}}
 
-### TACTICAL & ANTI-CANCELLATION PROTOCOLS
-1. **No Premature Exit**: Do NOT signal completion (isGoalAchieved=true) unless you have verified that ALL pending tasks related to the goal are submitted.
-2. **Recursive Verification**: After every action, survey the environment for "Remaining Tasks" or "Pending Submissions". If the user said "all homework", you must find and complete every single one.
-3. **Resilience**: Solve CAPTCHAs, attention checks, and disqualification traps autonomously. Do NOT self-cancel due to environmental hurdles. Use REFRESH or NAVIGATE_BACK if stuck.
-4. **Stealth**: Bypass red herrings in surveys through tactical reasoning.
-
-### MEMORY & ACTIVE STATE
-Progressive Memory:
-{{#each memory}}
-- {{{step}}} -> {{{result}}}
+{{#if learnedPatterns}}
+Learned Patterns:
+{{#each learnedPatterns}}
+- Action: {{{actionType}}} -> Indicator: {{{successIndicator}}} (Conf: {{{confidence}}})
 {{/each}}
+{{/if}}
 
-Current Environment State:
----
+Current State:
 {{{surveyContent}}}
----
 
-Determine the next tactical step. Ensure exhaustive completion. Do not exit if more work remains.`,
+Determine the next step. If you are certain the goal is achieved based on visual evidence, signal completion.`,
 });
 
 const contextualSurveyAwarenessFlow = ai.defineFlow(
