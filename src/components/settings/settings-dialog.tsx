@@ -3,8 +3,9 @@
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { 
@@ -13,8 +14,7 @@ import {
   Trash2, 
   Shield, 
   Zap, 
-  Database,
-  ChevronRight
+  Database
 } from "lucide-react";
 import { useFirebase } from "@/firebase";
 import { useCollection } from "@/firebase/firestore/use-collection";
@@ -51,6 +51,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl bg-background/95 backdrop-blur-3xl border-white/10 rounded-3xl p-0 overflow-hidden ring-1 ring-white/10 shadow-2xl">
+        <DialogDescription className="sr-only">
+          Configure Nexus agent autonomy, shared tool infrastructure, and learned success patterns.
+        </DialogDescription>
         <div className="flex h-[550px]">
           {/* Sidebar Navigation */}
           <div className="w-52 border-r border-white/5 bg-white/[0.02] p-5 flex flex-col gap-6">
@@ -58,7 +61,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <div className="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30">
                   <Settings className="w-4 h-4 text-primary" />
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-foreground/90">Nexus Settings</span>
+                <DialogTitle className="text-[10px] font-black uppercase tracking-widest text-foreground/90">
+                  Nexus Settings
+                </DialogTitle>
              </div>
              
              <div className="flex flex-col gap-1.5">
