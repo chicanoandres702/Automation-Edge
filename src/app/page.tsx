@@ -63,7 +63,6 @@ export default function FleetNexusPage() {
   });
   const [manualMode, setManualMode] = useState(false);
   
-  // Modal States
   const [isInterventionOpen, setIsInterventionOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isIdentityOpen, setIsIdentityOpen] = useState(false);
@@ -139,7 +138,10 @@ export default function FleetNexusPage() {
   };
 
   const detectContexts = (p: string) => {
-    const platformKeywords = ['capella', 'microsoft', 'vitalsource', 'library', 'canvas', 'blackboard'];
+    const platformKeywords = [
+      'google', 'doc', 'sheet', 'spreadsheet', 'microsoft', 'office', 'vitalsource', 
+      'library', 'canvas', 'blackboard', 'capella', 'yellowdig'
+    ];
     const foundPlatform = platformKeywords.find(k => p.toLowerCase().includes(k));
     
     const courseMatch = p.match(/[A-Z]{2,4}-?\d{4}/i);
@@ -161,7 +163,7 @@ export default function FleetNexusPage() {
 
     addLog(`Analysis: ${needsRotation ? 'Masking Required' : 'Stability Prioritized'}`, "system");
     if (missionContext) addLog(`Mission Continuity: Active for ${missionContext}`, "info");
-    if (platformContext) addLog(`Shared Platform: ${platformContext} Infrastructure Linked`, "success");
+    if (platformContext) addLog(`Shared Platform Tool: ${platformContext} Unified Knowledge`, "success");
     
     if (needsRotation) {
       await runGeoIdSync(true);
@@ -171,7 +173,7 @@ export default function FleetNexusPage() {
     }
 
     await runFleetSync(true);
-    addLog(`Synthesizing Mission Parameters (Gemini 3.0)...`, "info");
+    addLog(`Synthesizing Parameters (Gemini 3.0)...`, "info");
     
     try {
       const result = await generateAutomationFromPrompt({ 
@@ -456,20 +458,18 @@ export default function FleetNexusPage() {
             <div className="flex items-center justify-between px-1">
               <div className="flex flex-col gap-0.5">
                 <h3 className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">Matrix_Queue</h3>
-                {(activeTask?.missionContext || activeTask?.platformContext) && (
-                  <div className="flex gap-1">
-                    {activeTask.platformContext && (
-                      <span className="text-[7px] font-black text-primary uppercase tracking-widest bg-primary/10 px-1 rounded w-fit">
-                        {activeTask.platformContext} (Shared)
-                      </span>
-                    )}
-                    {activeTask.missionContext && (
-                      <span className="text-[7px] font-black text-accent uppercase tracking-widest bg-accent/10 px-1 rounded w-fit">
-                        {activeTask.missionContext} (Continuous)
-                      </span>
-                    )}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-1">
+                  {(activeTask?.platformContext) && (
+                    <span className="text-[7px] font-black text-primary uppercase tracking-widest bg-primary/10 px-1 rounded border border-primary/20 w-fit">
+                      {activeTask.platformContext} (Shared Tool)
+                    </span>
+                  )}
+                  {(activeTask?.missionContext) && (
+                    <span className="text-[7px] font-black text-accent uppercase tracking-widest bg-accent/10 px-1 rounded border border-accent/20 w-fit">
+                      {activeTask.missionContext} (Continuous Mission)
+                    </span>
+                  )}
+                </div>
               </div>
               {activeTask && (
                 <div className="flex items-center gap-2">
@@ -518,9 +518,6 @@ export default function FleetNexusPage() {
                   <AlertTriangle className="w-5 h-5" />
                   Contextual Intervention
                 </DialogTitle>
-                <DialogDescription className="text-[10px] text-muted-foreground/80 leading-relaxed mt-2">
-                  The AI Agent has encountered a branching logic point that requires human verification.
-                </DialogDescription>
               </DialogHeader>
               <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/5 my-4">
                 <p className="text-[11px] font-bold italic opacity-70">"{interventionQuery}"</p>
@@ -533,8 +530,7 @@ export default function FleetNexusPage() {
                 onKeyDown={(e) => e.key === 'Enter' && handleInterventionSubmit()}
               />
               <DialogFooter className="mt-6">
-                <Button variant="outline" className="rounded-xl text-[10px] font-black uppercase" onClick={() => setIsInterventionOpen(false)}>Ignore</Button>
-                <Button className="bg-primary text-primary-foreground rounded-xl text-[10px] font-black uppercase" onClick={handleInterventionSubmit}>Continue Mission</Button>
+                <Button className="bg-primary text-primary-foreground rounded-xl text-[10px] font-black uppercase w-full" onClick={handleInterventionSubmit}>Continue Mission</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

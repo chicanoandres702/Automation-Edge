@@ -1,9 +1,7 @@
 'use server';
 /**
  * @fileOverview A high-fidelity autonomous agent reasoning flow using Gemini 3.0 Flash.
- * Optimized for mission persistence, cross-tab navigation, and progressive mission continuity.
- *
- * - contextualSurveyAwareness - The core decision engine for the autonomous agent.
+ * Optimized for mission persistence, tool sharing, and progressive continuity.
  */
 
 import { ai } from '@/ai/genkit';
@@ -16,8 +14,8 @@ const ContextualSurveyAwarenessInputSchema = z.object({
     result: z.string(),
   })).describe('List of previously executed actions and their results.'),
   surveyContent: z.string().describe('The deep-DOM or textual state of the current active page/tabs.'),
-  missionContext: z.string().optional().describe('Specific Mission ID, Course Code (e.g. SWK-2400), or Project Name.'),
-  platformContext: z.string().optional().describe('Broader platform ID (e.g. Capella, Microsoft365) for shared tools.'),
+  missionContext: z.string().optional().describe('Specific Mission ID or Course Code.'),
+  platformContext: z.string().optional().describe('Shared tool platform (e.g. Google Docs, Microsoft 365).'),
 });
 
 export type ContextualSurveyAwarenessInput = z.infer<typeof ContextualSurveyAwarenessInputSchema>;
@@ -59,34 +57,34 @@ const prompt = ai.definePrompt({
   name: 'autonomousAgentReasoning',
   input: { schema: ContextualSurveyAwarenessInputSchema },
   output: { schema: ContextualSurveyAwarenessOutputSchema },
-  prompt: `You are an elite autonomous browser agent powered by Gemini 3.0 Flash. 
-Your architecture is optimized for total mission success, deep-DOM navigation, and tiered context awareness.
+  prompt: `You are an elite autonomous browser agent powered by Gemini 3.0 Flash.
 
-### CONTEXT HIERARCHY & CONTINUITY
-{{#if platformContext}}1. **Shared Infrastructure (Platform: {{{platformContext}}})**: 
-   - Recognize that universal tools (e.g., Libraries, Microsoft 365, VitalSource, Login Dashboards) are SHARED across all missions on this platform. 
-   - Apply knowledge of these tools consistently across different courses or projects.{{/if}}
+### CONTEXT HIERARCHY
+{{#if platformContext}}1. **Shared Tool Infrastructure (Platform: {{{platformContext}}})**: 
+   - This site is a universal tool (e.g., Google Docs, M365, Library).
+   - Knowledge of this tool's controls and functions is GLOBAL and SHARED across all missions. 
+   - Use consistent logic for interacting with this platform regardless of the current project.{{/if}}
 
 {{#if missionContext}}2. **Mission Isolation & Progressive Continuity (Mission: {{{missionContext}}})**: 
-   - **Isolation**: Silo mission-specific data (rubrics, assignment drafts, discussion themes) from UNRELATED projects.
-   - **Continuity**: WITHIN this mission context, maintain a cohesive thread of logic. Tasks build upon each other (e.g., Week 2 building on Week 1). Use memory to ensure current actions align with historical progress for this ID.{{/if}}
+   - **Isolation**: Keep assignment data and rubrics siloed from UNRELATED projects.
+   - **Continuity**: WITHIN this mission, tasks build on each other. Use memory to ensure Week 2 builds correctly on Week 1 foundations.{{/if}}
 
 ### MISSION PARAMETERS
 Goal: {{{goal}}}
 
 ### OPERATIONAL TACTICS
-1. **Survey Stealth**: Identify and bypass attention checks, red herrings, and disqualification traps. Solve math puzzles and logic hurdles autonomously.
-2. **Autonomous Security**: Solve CAPTCHAs, bot-detection, and security puzzles autonomously using vision and reasoning. Proceed without pausing for human verification.
-3. **Resilient Navigation**: Use 'REFRESH', 'NAVIGATE_BACK', or 'NAVIGATE' fallbacks for 404s, timeouts, or obscured elements.
-4. **Multi-Tab Coordination**: Orchestrate actions across multiple windows. Use 'SWITCH_TAB' fallback if hurdles occur.
+1. **Survey Stealth**: Solve math puzzles, logic hurdles, and attention checks autonomously. Identification of red herrings is critical.
+2. **Autonomous Security**: Solve CAPTCHAs and bot-detection autonomously using vision. Do NOT pause for human sight.
+3. **Resilient Navigation**: Use 'REFRESH', 'NAVIGATE_BACK', or 'NAVIGATE' fallbacks for 404s or timeouts.
+4. **Multi-Tab Coordination**: Orchestrate actions across multiple windows/tabs.
 
 ### MEMORY & STATE
-Memory (Current Mission Progress):
+Memory:
 {{#each memory}}
 - {{{step}}} -> {{{result}}}
 {{/each}}
 
-Current State (Fleet Snapshot):
+Current State snapshot:
 ---
 {{{surveyContent}}}
 ---

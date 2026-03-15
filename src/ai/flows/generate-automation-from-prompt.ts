@@ -10,7 +10,7 @@ import {z} from 'genkit';
 const GenerateAutomationFromPromptInputSchema = z.object({
   prompt: z.string().describe('A natural language description of the desired browser automation task.'),
   missionContext: z.string().optional().describe('Specific Mission/Course ID (e.g. SWK-2400).'),
-  platformContext: z.string().optional().describe('Broader Platform ID (e.g. Capella).'),
+  platformContext: z.string().optional().describe('Broader Platform ID (e.g. Google Docs, Capella).'),
 });
 export type GenerateAutomationFromPromptInput = z.infer<
   typeof GenerateAutomationFromPromptInputSchema
@@ -41,13 +41,20 @@ const automationPrompt = ai.definePrompt({
   output: {schema: GenerateAutomationFromPromptOutputSchema},
   prompt: `You are an elite AI Browser Agent. Your objective is to translate user requests into a high-fidelity sequence of operations.
 
-### Context Strategy:
-{{#if platformContext}}Platform: {{{platformContext}}}. Use knowledge of universal platform tools (Library, Microsoft 365) that are shared across all courses.{{/if}}
-{{#if missionContext}}Mission: {{{missionContext}}}. Maintain progressive continuity (e.g. Week 2 building on Week 1) and isolate assignment-specific data from other courses.{{/if}}
+### CONTEXT STRATEGY:
+{{#if platformContext}}**Shared Platform/Tool: {{{platformContext}}}**
+- This is a universal tool (e.g., Google Docs, M365, Library). 
+- Use your persistent knowledge of this tool's infrastructure. 
+- Actions here should be consistent with how this tool is used across any project.{{/if}}
 
-### Strategy Guidelines:
+{{#if missionContext}}**Mission Context: {{{missionContext}}}**
+- This is a specific mission (e.g., Course SWK-2400).
+- Maintain **Progressive Continuity**: Logic from previous weeks/tasks within this ID should be leveraged as a foundation.
+- Maintain **Isolation**: Do NOT use data or rubrics from UNRELATED missions.{{/if}}
+
+### OPERATIONAL GUIDELINES:
 1. **Unrestricted Execution**: Include login, extraction, and submission. 
-2. **Autonomous Security**: Include steps to identify and solve CAPTCHAs or security verifications autonomously using vision.
+2. **Autonomous Security**: Solve CAPTCHAs or security verifications autonomously using vision. Do not pause for human help.
 3. **Multi-Tab Coordination**: Orchestrate actions across multiple sites.
 4. **Resilience**: Plan for verification steps to confirm successful interactions.
 
