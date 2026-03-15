@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Optimized autonomous reasoning with Adaptive Autonomy.
@@ -47,7 +46,7 @@ const ContextualSurveyAwarenessOutputSchema = z.object({
   reasoning: z.string(),
   confidence: z.number().describe('0.0 to 1.0. If > 0.85, agent proceeds without confirmation.'),
   isGoalAchieved: z.boolean(),
-  successPatternIdentified: z.string().optional().describe('If success is detected, describe the visual indicator (e.g. text "Submitted").'),
+  successPatternIdentified: z.string().optional().describe('A descriptive string of the visual evidence indicating success (e.g. "Green checkmark on button", "Success Alert visible").'),
 });
 
 export type ContextualSurveyAwarenessOutput = z.infer<typeof ContextualSurveyAwarenessOutputSchema>;
@@ -65,23 +64,23 @@ const prompt = ai.definePrompt({
   prompt: `You are a high-autonomy browser agent. 
 
 ### ADAPTIVE CONFIRMATION PROTOCOL
-1. **Learn & Bypass**: If you see a state in 'surveyContent' that matches a 'learnedPattern' (e.g., a "Submission Successful" header), set confidence=1.0 and skip asking the user.
-2. **Visual Evidence**: Look for visual indicators of completion: banners, disappeared forms, or updated dashboard counts.
-3. **Ask only if Ambiguous**: Only use ASK_USER if you encounter a high-risk decision (e.g., "Delete Account") or a new platform pattern you've never seen.
+1. **Learn & Bypass**: Compare the current 'surveyContent' with 'learnedPatterns'. If you see a visual indicator (text, status, or disappeared element) that matches a success pattern, bypass ASK_USER. Set confidence=1.0.
+2. **Visual Evidence**: Look for banners like "Submitted", "Thank You", or "Step Complete". If found, set isGoalAchieved=true and describe the pattern in 'successPatternIdentified'.
+3. **Intervention**: Only use ASK_USER if the path forward is genuinely ambiguous or high-risk (e.g. permanent deletion).
 
 Goal: {{{goal}}}
 
 {{#if learnedPatterns}}
-Learned Patterns:
+### KNOWN SUCCESS PATTERNS (BYPASS IF SEEN):
 {{#each learnedPatterns}}
-- Action: {{{actionType}}} -> Indicator: {{{successIndicator}}} (Conf: {{{confidence}}})
+- Action: {{{actionType}}} -> Evidence Indicator: {{{successIndicator}}}
 {{/each}}
 {{/if}}
 
-Current State:
+Current Environment State:
 {{{surveyContent}}}
 
-Determine the next step. If you are certain the goal is achieved based on visual evidence, signal completion.`,
+Identify the next action. If you see a clear indicator of success that matches a known pattern, prioritize autonomy.`,
 });
 
 const contextualSurveyAwarenessFlow = ai.defineFlow(

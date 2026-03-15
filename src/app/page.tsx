@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -18,7 +17,9 @@ import {
   Lock,
   Unlock,
   Search,
-  Eye
+  Eye,
+  ChevronRight,
+  ShieldCheck
 } from "lucide-react";
 import { AutomationTask, AutomationStep, ExecutionMemory } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
@@ -39,6 +40,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 export default function NexusControlCenter() {
   const [mounted, setMounted] = useState(false);
@@ -56,6 +59,7 @@ export default function NexusControlCenter() {
   const [interventionQuestion, setInterventionQuestion] = useState("");
   const [interventionResponse, setInterventionResponse] = useState("");
   const [pendingActionData, setPendingActionData] = useState<any>(null);
+  const [shouldLearnPattern, setShouldLearnPattern] = useState(true);
 
   const addLog = useCallback((msg: string, type: 'info' | 'warn' | 'success' | 'system' = 'info') => {
     setLogs(prev => [...prev.slice(-30), { msg, type }]);
@@ -63,7 +67,7 @@ export default function NexusControlCenter() {
 
   useEffect(() => {
     setMounted(true);
-    addLog("Nexus Kernel v6.5 (Adaptive Autonomy) Initialized", "system");
+    addLog("Nexus Kernel v6.5 Initialized", "system");
   }, [addLog]);
 
   useEffect(() => {
@@ -80,7 +84,7 @@ export default function NexusControlCenter() {
 
     const currentStep = activeTask.steps[activeTask.currentStepIndex];
     if (!currentStep) {
-       addLog("Mission Objective Fulfilled: Final Verification.", "system");
+       addLog("Verifying Mission Finality...", "system");
        await verifyGoalCompletion();
        return;
     }
@@ -114,26 +118,13 @@ export default function NexusControlCenter() {
         platformContext: platformContext,
       });
 
-      // Adaptive Autonomy: Bypass intervention if confidence is high or success is visuals
+      // Adaptive Autonomy: Bypass intervention if confidence is high (Learning success)
       if (result.action === 'ASK_USER' && result.confidence < 0.85) {
         setInterventionQuestion(result.parameters.question || "Strategic ambiguity encountered.");
         setPendingActionData(result);
         setIsInterventionOpen(true);
         setActiveTask(prev => prev ? { ...prev, status: 'intervention_required' } : null);
         return;
-      }
-
-      // If we got here and it's a "success pattern", learn it
-      if (result.successPatternIdentified && activeTask.missionContext) {
-        const missionRef = doc(db, "missions", activeTask.missionContext);
-        setDoc(missionRef, {
-          learnedPatterns: arrayUnion({
-            actionType: result.action,
-            successIndicator: result.successPatternIdentified,
-            confidence: 1.0
-          })
-        }, { merge: true });
-        addLog(`Neural Pattern Learned: ${result.successPatternIdentified}`, "success");
       }
 
       const stepResult: ExecutionMemory = { 
@@ -152,7 +143,7 @@ export default function NexusControlCenter() {
 
       if (result.isGoalAchieved) {
         setActiveTask(prev => prev ? { ...prev, status: 'completed' } : null);
-        addLog("Goal achieved via visual verification.", "success");
+        addLog("Objective achieved via visual verification.", "success");
       } else {
         const nextStepIndex = activeTask.currentStepIndex + 1;
         setActiveTask(prev => prev ? {
@@ -164,7 +155,7 @@ export default function NexusControlCenter() {
       }
 
     } catch (error) {
-      addLog("Node error. Attempting self-healing recovery.", "warn");
+      addLog("Node stream error. Recovering...", "warn");
       setActiveTask(prev => prev ? { ...prev, status: 'running' } : null);
     }
   };
@@ -181,12 +172,12 @@ export default function NexusControlCenter() {
 
     if (result.isGoalAchieved) {
       setActiveTask(prev => prev ? { ...prev, status: 'completed' } : null);
-      addLog("Mission Verified Complete.", "success");
+      addLog("Mission Objective Verified: Complete.", "success");
     } else {
-      addLog("Work remains. Extending loop.", "system");
+      addLog("Incomplete state detected. Extending loop.", "system");
       const newStep: AutomationStep = {
         id: `dynamic-${Date.now()}`,
-        description: `Resolve pending tasks for ${activeTask.prompt}`,
+        description: `Resolve pending tasks for: ${activeTask.prompt}`,
         type: 'navigate',
         status: 'pending',
         retryCount: 0,
@@ -203,20 +194,22 @@ export default function NexusControlCenter() {
   const handleStartMission = async () => {
     if (!prompt.trim()) return;
     setIsGenerating(true);
-    addLog(`Neural Link established...`, "info");
+    addLog(`Initiating Tactical Neural Link...`, "info");
     try {
       const toolsSnap = await getDocs(collection(db, "tools"));
       const sharedToolHostnames = toolsSnap.docs.map(d => d.data().hostname);
       const result = await generateAutomationFromPrompt({ prompt, missionContext: missionId || undefined, sharedToolHostnames });
+      
       let initialStatus: AutomationTask['status'] = 'running';
       if (result.neuralLock.missionId) {
         setMissionId(result.neuralLock.missionId);
         setIsNeuralLocked(true);
-        addLog(`Lock: ${result.neuralLock.missionId}`, "system");
+        addLog(`Neural Lock established: ${result.neuralLock.missionId}`, "system");
       } else if (result.neuralLock.isAmbiguous) {
         initialStatus = 'seeking';
-        addLog(`Seeking context...`, "warn");
+        addLog(`Seeking environment context...`, "warn");
       }
+
       const now = Date.now();
       const newSteps: AutomationStep[] = result.workflowSteps.map((s, idx) => ({
         id: `step-${now}-${idx}`,
@@ -226,6 +219,7 @@ export default function NexusControlCenter() {
         retryCount: 0,
         maxRetries: 3
       }));
+
       setActiveTask({
         id: `task-${now}`,
         prompt,
@@ -241,7 +235,7 @@ export default function NexusControlCenter() {
       });
       setPrompt("");
     } catch (error) {
-      addLog("Link error.", "warn");
+      addLog("Neural link failure.", "warn");
     } finally {
       setIsGenerating(false);
     }
@@ -249,10 +243,10 @@ export default function NexusControlCenter() {
 
   const handleInterventionSubmit = () => {
     if (!activeTask) return;
-    addLog(`Operator sync complete. Pattern cached.`, "system");
     
-    // Cache the successful pattern if this was a confirmation
-    if (activeTask.missionContext && pendingActionData?.successPatternIdentified) {
+    // If learning is enabled, cache the pattern
+    if (shouldLearnPattern && activeTask.missionContext && pendingActionData?.successPatternIdentified) {
+       addLog(`Caching Neural Pattern: ${pendingActionData.successPatternIdentified}`, "success");
        const missionRef = doc(db, "missions", activeTask.missionContext);
        setDoc(missionRef, {
          learnedPatterns: arrayUnion({
@@ -263,10 +257,11 @@ export default function NexusControlCenter() {
        }, { merge: true });
     }
 
+    addLog(`Operator override synced. Resuming...`, "system");
     setActiveTask({
       ...activeTask,
       status: 'running',
-      memory: [...activeTask.memory, { step: "NEURAL_OVERRIDE", result: interventionResponse }]
+      memory: [...activeTask.memory, { step: "OPERATOR_SYNC", result: interventionResponse }]
     });
     setIsInterventionOpen(false);
     setInterventionResponse("");
@@ -293,13 +288,15 @@ export default function NexusControlCenter() {
       />
       
       <SidebarInset className="bg-background flex flex-col h-screen relative overflow-hidden">
+        {/* Background Fade Portrait */}
         <div 
-          className="absolute left-0 top-0 w-1/3 h-full z-0 opacity-10 pointer-events-none hidden md:block"
+          className="absolute left-0 top-0 w-full md:w-1/2 h-full z-0 opacity-5 pointer-events-none transition-opacity duration-1000"
           style={{
             backgroundImage: `url(${agentPortrait?.imageUrl})`,
             backgroundSize: 'cover',
-            maskImage: 'linear-gradient(to right, black, transparent)',
-            WebkitMaskImage: 'linear-gradient(to right, black, transparent)',
+            backgroundPosition: 'left center',
+            maskImage: 'linear-gradient(to right, black 20%, transparent)',
+            WebkitMaskImage: 'linear-gradient(to right, black 20%, transparent)',
           }}
           data-ai-hint="ai agent silhouette"
         />
@@ -309,33 +306,38 @@ export default function NexusControlCenter() {
             <SidebarTrigger className="h-8 w-8" />
             <div className="flex flex-col">
               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Nexus Fleet</span>
-              <span className="text-[8px] font-medium text-muted-foreground uppercase">Adaptive v6.5</span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1 h-1 rounded-full bg-accent animate-pulse" />
+                <span className="text-[8px] font-medium text-muted-foreground uppercase">Adaptive v6.5 Active</span>
+              </div>
             </div>
           </div>
           
           <div className="flex items-center gap-3">
              <div className={cn(
-               "flex items-center gap-2 px-2 py-1 rounded-md border transition-colors",
-               isNeuralLocked ? "bg-primary/10 border-primary/30" : "bg-white/5 border-white/5"
+               "flex items-center gap-2 px-2.5 py-1 rounded-lg border transition-all duration-500",
+               isNeuralLocked ? "bg-primary/10 border-primary/30 shadow-[0_0_15px_rgba(0,100,255,0.1)]" : "bg-white/5 border-white/5"
              )}>
                 {isNeuralLocked ? <Lock className="w-2.5 h-2.5 text-primary" /> : <Unlock className="w-2.5 h-2.5 text-muted-foreground" />}
-                <span className={cn("text-[9px] font-black uppercase", isNeuralLocked ? "text-primary" : "text-muted-foreground")}>
+                <span className={cn("text-[9px] font-black uppercase tracking-tighter", isNeuralLocked ? "text-primary" : "text-muted-foreground")}>
                   {isNeuralLocked ? `Lock: ${missionId}` : "Neural Open"}
                 </span>
              </div>
-             <SettingsIcon className="w-4 h-4 text-muted-foreground hover:text-primary cursor-pointer" />
+             <div className="p-2 hover:bg-white/5 rounded-full transition-colors cursor-pointer">
+                <SettingsIcon className="w-4 h-4 text-muted-foreground" />
+             </div>
           </div>
         </header>
 
-        <main className="flex-1 flex flex-col min-h-0 z-10 relative p-4 md:p-6 space-y-4">
+        <main className="flex-1 flex flex-col min-h-0 z-10 relative p-4 md:p-6 space-y-6">
           <div className="max-w-4xl mx-auto w-full">
-            <Card className="p-1 bg-background/60 backdrop-blur-3xl border-white/5 rounded-2xl shadow-2xl ring-1 ring-white/10">
+            <Card className="p-1.5 bg-black/40 backdrop-blur-3xl border-white/10 rounded-2xl shadow-2xl ring-1 ring-white/10 group transition-all duration-300 hover:ring-primary/20">
               <div className="flex flex-col sm:flex-row gap-2 p-2">
-                <div className="relative group flex-1">
-                  <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40 group-focus-within:text-primary" />
+                <div className="relative flex-1">
+                  <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40 group-focus-within:text-primary transition-colors" />
                   <Input 
-                    placeholder="Enter objective (e.g. Complete all assignments)..."
-                    className="bg-transparent border-none text-sm h-12 pl-10 focus-visible:ring-0"
+                    placeholder="Enter Tactical Objective (e.g. Complete Week 3 for SWK-2400)..."
+                    className="bg-transparent border-none text-sm h-12 pl-10 focus-visible:ring-0 placeholder:text-muted-foreground/40"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleStartMission()}
@@ -344,7 +346,7 @@ export default function NexusControlCenter() {
                 <Button 
                   onClick={handleStartMission} 
                   disabled={isGenerating || !prompt.trim()} 
-                  className="h-10 px-6 bg-primary text-primary-foreground font-black uppercase text-[10px] tracking-widest rounded-xl hover:scale-105 transition-transform"
+                  className="h-12 px-8 bg-primary text-primary-foreground font-black uppercase text-[10px] tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/20"
                 >
                   {isGenerating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 fill-current mr-2" />}
                   {isGenerating ? "Mapping" : "Initiate"}
@@ -362,18 +364,31 @@ export default function NexusControlCenter() {
               />
             </div>
 
-            <div className="lg:col-span-4 hidden md:flex flex-col min-h-0 space-y-3">
-               <div className="flex items-center gap-2 px-2">
-                <Terminal className="w-4 h-4 text-accent" />
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Persistence Matrix</h3>
+            <div className="lg:col-span-4 hidden md:flex flex-col min-h-0 space-y-4">
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-accent" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Persistence Matrix</h3>
+                </div>
+                <ShieldCheck className="w-3.5 h-3.5 text-primary opacity-40" />
               </div>
-              <Card className="flex-1 bg-black/40 backdrop-blur-md border-white/5 p-4 rounded-3xl flex flex-col min-h-0 ring-1 ring-white/5">
+              <Card className="flex-1 bg-black/60 backdrop-blur-md border-white/5 p-4 rounded-3xl flex flex-col min-h-0 ring-1 ring-white/5 shadow-inner">
                  <ScrollArea className="flex-1">
-                   <div className="space-y-3">
+                   <div className="space-y-4">
                      {logs.map((log, i) => (
-                       <div key={i} className="flex gap-2 items-start">
-                         <div className={cn("w-1 h-3 mt-1 rounded-full shrink-0", log.type === 'success' ? 'bg-accent' : log.type === 'system' ? 'bg-primary' : 'bg-muted-foreground/30')} />
-                         <p className={cn("text-[10px] font-mono leading-relaxed", log.type === 'success' ? 'text-accent' : log.type === 'system' ? 'text-primary' : 'text-muted-foreground')}>
+                       <div key={i} className="flex gap-3 items-start animate-in fade-in slide-in-from-left-2 duration-300">
+                         <div className={cn(
+                           "w-1 h-3 mt-1 rounded-full shrink-0", 
+                           log.type === 'success' ? 'bg-accent' : 
+                           log.type === 'system' ? 'bg-primary' : 
+                           log.type === 'warn' ? 'bg-destructive' : 'bg-muted-foreground/30'
+                         )} />
+                         <p className={cn(
+                           "text-[10px] font-mono leading-relaxed tracking-tight", 
+                           log.type === 'success' ? 'text-accent' : 
+                           log.type === 'system' ? 'text-primary' : 
+                           log.type === 'warn' ? 'text-destructive/80' : 'text-muted-foreground'
+                         )}>
                            {log.msg}
                          </p>
                        </div>
@@ -386,28 +401,43 @@ export default function NexusControlCenter() {
         </main>
 
         <Dialog open={isInterventionOpen} onOpenChange={setIsInterventionOpen}>
-          <DialogContent className="bg-background/95 border-primary/20 backdrop-blur-3xl max-w-md rounded-3xl">
-            <DialogHeader>
-              <DialogTitle className="text-primary font-black uppercase tracking-widest text-sm flex items-center gap-2">
-                <Eye className="w-5 h-5" />
-                Adaptive Confirmation
+          <DialogContent className="bg-background/95 border-primary/20 backdrop-blur-3xl max-w-md rounded-3xl p-8 ring-1 ring-primary/20">
+            <DialogHeader className="mb-6">
+              <DialogTitle className="text-primary font-black uppercase tracking-widest text-xs flex items-center gap-3">
+                <BrainCircuit className="w-5 h-5" />
+                Operator Sync Required
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-6 py-4">
-              <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10">
-                <p className="text-xs font-bold italic">"{interventionQuestion}"</p>
+            <div className="space-y-8">
+              <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10 shadow-inner">
+                <p className="text-xs font-bold leading-relaxed opacity-90 italic">"{interventionQuestion}"</p>
               </div>
-              <Input 
-                placeholder="Guidance (e.g. Yes, that is correct)..."
-                className="bg-background/50 border-white/10 text-xs h-12 rounded-xl"
-                value={interventionResponse}
-                onChange={(e) => setInterventionResponse(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleInterventionSubmit()}
-              />
+              
+              <div className="space-y-4">
+                <Input 
+                  placeholder="Neural Guidance (e.g. Yes, that is correct)..."
+                  className="bg-black/20 border-white/10 text-xs h-14 rounded-2xl px-5 focus-visible:ring-primary/30"
+                  value={interventionResponse}
+                  onChange={(e) => setInterventionResponse(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleInterventionSubmit()}
+                />
+                
+                <div className="flex items-center space-x-3 px-1">
+                  <Checkbox 
+                    id="learn-pattern" 
+                    checked={shouldLearnPattern} 
+                    onCheckedChange={(val) => setShouldLearnPattern(!!val)}
+                    className="border-primary/40 data-[state=checked]:bg-primary"
+                  />
+                  <Label htmlFor="learn-pattern" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                    Lock Response & Cache Success Pattern
+                  </Label>
+                </div>
+              </div>
             </div>
-            <DialogFooter>
-              <Button onClick={handleInterventionSubmit} className="w-full bg-primary text-primary-foreground font-black uppercase text-[10px] tracking-widest py-6 rounded-2xl">
-                Confirm & Learn Pattern
+            <DialogFooter className="mt-8">
+              <Button onClick={handleInterventionSubmit} className="w-full bg-primary text-primary-foreground font-black uppercase text-[10px] tracking-widest py-7 rounded-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-primary/20">
+                Confirm & Resynchronize
               </Button>
             </DialogFooter>
           </DialogContent>
