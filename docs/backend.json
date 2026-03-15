@@ -1,59 +1,229 @@
-
 {
   "entities": {
-    "MissionContext": {
-      "title": "Mission Context",
-      "description": "Stores state, memory, and learned success patterns for a specific mission.",
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
       "type": "object",
+      "description": "Stores user-specific settings, preferences, and a reference to their external Google account for the Automaton Edge application.",
       "properties": {
-        "missionId": { "type": "string", "description": "Unique identifier for the mission (e.g. Course Code)." },
-        "memory": { 
-          "type": "array", 
-          "items": { 
-            "type": "object",
-            "properties": {
-              "step": { "type": "string" },
-              "result": { "type": "string" },
-              "timestamp": { "type": "number" }
-            }
-          }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
         },
-        "learnedPatterns": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "actionType": { "type": "string" },
-              "successIndicator": { "type": "string", "description": "DOM selector or text indicating success." },
-              "confidence": { "type": "number" }
-            }
-          }
+        "googleId": {
+          "type": "string",
+          "description": "The unique identifier from the external Google authentication system associated with this user profile."
         },
-        "updatedAt": { "type": "number" }
-      }
+        "preferredPersistence": {
+          "type": "string",
+          "description": "User's preference for data storage, e.g., 'local', 'firestore', or 'hybrid' for cross-device synchronization.",
+          "format": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user profile was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "googleId",
+        "preferredPersistence",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "PlatformTool": {
-      "title": "Platform Tool",
-      "description": "Stores shared knowledge for a universal tool (e.g. Google Docs).",
+    "AutomationTask": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AutomationTask",
       "type": "object",
+      "description": "Represents a user-defined configuration for a browser automation workflow, created from a natural language prompt.",
       "properties": {
-        "toolId": { "type": "string", "description": "The classified tool identifier." },
-        "hostname": { "type": "string" },
-        "isShared": { "type": "boolean", "default": true }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AutomationTask entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile entity that owns this automation task. (Relationship: UserProfile 1:N AutomationTask)"
+        },
+        "name": {
+          "type": "string",
+          "description": "A user-friendly name or title for the automation task."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "The natural language input provided by the user to define the automation task."
+        },
+        "configuration": {
+          "type": "string",
+          "description": "A JSON string storing detailed configuration parameters for the AI automation core, including strategies for survey completion and anti-disqualification."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current lifecycle status of the automation task (e.g., 'draft', 'active', 'paused', 'archived')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the automation task was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the automation task was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "prompt",
+        "configuration",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AutomationLogEntry": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AutomationLogEntry",
+      "type": "object",
+      "description": "Records the details and outcome of a single execution instance of an AutomationTask, forming the automation history log.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AutomationLogEntry entity."
+        },
+        "automationTaskId": {
+          "type": "string",
+          "description": "Reference to the AutomationTask entity that was executed for this log entry. (Relationship: AutomationTask 1:N AutomationLogEntry)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile entity that initiated the automation task, useful for direct querying of user logs. (Relationship: UserProfile 1:N AutomationLogEntry)"
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Timestamp indicating when the automation execution started.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "Timestamp indicating when the automation execution finished.",
+          "format": "date-time"
+        },
+        "outcome": {
+          "type": "string",
+          "description": "The final result of the automation execution (e.g., 'success', 'failed', 'halted', 'disqualified', 'completed_with_notes')."
+        },
+        "details": {
+          "type": "string",
+          "description": "A comprehensive string containing a summary, specific output, error messages, or alerts from the automation run."
+        },
+        "contextualSnapshots": {
+          "type": "array",
+          "description": "An array of URIs or text snippets representing key web page contexts or survey questions analyzed by the AI during execution.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "visualizerLogUri": {
+          "type": "string",
+          "description": "An optional URI pointing to a detailed log or recording of the real-time action visualizer for this execution.",
+          "format": "uri"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when this log entry was recorded, useful for auditing.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "automationTaskId",
+        "userId",
+        "startTime",
+        "outcome",
+        "details",
+        "createdAt"
+      ]
     }
   },
   "auth": {
-    "providers": ["google.com"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/missions/{missionId}": {
-      "schema": "MissionContext",
-      "description": "Project-specific progressive continuity and learned autonomy storage."
-    },
-    "/tools/{toolId}": {
-      "schema": "PlatformTool",
-      "description": "Shared tool infrastructure knowledge."
-    }
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores individual user profiles. The document ID for each UserProfile is the Firebase Authentication UID of the owning user, enabling direct path-based authorization. Includes denormalized 'id' (as document ID) for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier (Firebase Auth UID) of the user who owns this profile."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/automationTasks/{automationTaskId}",
+        "definition": {
+          "entityName": "AutomationTask",
+          "schema": {
+            "$ref": "#/backend/entities/AutomationTask"
+          },
+          "description": "Stores user-defined browser automation task configurations. Nested under the user's profile for clear ownership. Includes denormalized 'userId' field for authorization independence, allowing direct ownership checks without cross-document 'get()' calls.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier (Firebase Auth UID) of the user who owns this automation task."
+            },
+            {
+              "name": "automationTaskId",
+              "description": "The unique identifier for the specific automation task."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/automationTasks/{automationTaskId}/logEntries/{logEntryId}",
+        "definition": {
+          "entityName": "AutomationLogEntry",
+          "schema": {
+            "$ref": "#/backend/entities/AutomationLogEntry"
+          },
+          "description": "Records details and outcomes of a single execution instance of an AutomationTask. Nested under the specific automation task and user for clear hierarchy. Includes denormalized 'userId' field for authorization independence, allowing direct ownership checks without cross-document 'get()' calls.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier (Firebase Auth UID) of the user who owns this log entry."
+            },
+            {
+              "name": "automationTaskId",
+              "description": "The unique identifier of the AutomationTask associated with this log entry."
+            },
+            {
+              "name": "logEntryId",
+              "description": "The unique identifier for the specific automation log entry."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure is designed with a strong emphasis on Authorization Independence, Structural Segregation, and clear Access Modeling, ensuring robust, debuggable security rules and efficient data access patterns. The core of the design revolves around nesting user-specific data under a `/users/{userId}` path, where `{userId}` directly corresponds to the Firebase Authentication UID.\n\n1.  **User Profiles (`/users/{userId}`):** User profiles are stored as top-level documents within the `users` collection. The document ID for each UserProfile document is the Firebase Authentication `uid` of the owning user. This inherently makes each profile privately accessible only by its owner (e.g., `request.auth.uid == userId` in rules), fulfilling Path-Based ownership for private data. This design also provides Authorization Independence as the `userId` is directly available in the path, making it self-authenticating.\n\n2.  **Automation Tasks (`/users/{userId}/automationTasks/{automationTaskId}`):** Automation tasks are nested as a subcollection under the respective user's profile. This hierarchical path (`/users/{userId}/automationTasks`) clearly establishes a 1:N relationship where a user owns multiple automation tasks. Critically, each `AutomationTask` document will *include a `userId` field* that explicitly stores the owner's UID. This denormalization is crucial for **Authorization Independence**. Security rules for an `AutomationTask` can directly check `request.auth.uid == resource.data.userId` without needing to perform a `get()` operation on the parent user document. This also enables **QAPs (Query-Based Access Patterns)**, as a user can securely list all their tasks by querying `automationTasks` within their user path, and the rules will ensure only their tasks are returned.\n\n3.  **Automation Log Entries (`/users/{userId}/automationTasks/{automationTaskId}/logEntries/{logEntryId}`):** Log entries, representing individual executions of an automation task, are further nested under the specific automation task they belong to. This continues the hierarchical path structure for nested 1:N data (`/users/{userId}/automationTasks/{automationTaskId}/logEntries`). Similar to `AutomationTask`, each `AutomationLogEntry` document will *include a `userId` field* (denormalized from the owning user profile). This ensures that authorization rules for log entries are also **Authorization Independent**, allowing direct checks like `request.auth.uid == resource.data.userId` without `get()` calls to the parent task or user documents. This design allows for efficient listing of log entries for a specific task or for all tasks belonging to a user, fully supporting **QAPs** by ensuring that rules enforce ownership based on the `userId` in the path and the document data.\n\n**Overall Authorization Independence:** By consistently denormalizing the `userId` into `AutomationTask` and `AutomationLogEntry` documents, and leveraging the `userId` in the path segment for user profiles, all authorization checks can be performed locally on the document being accessed or its immediate path, entirely eliminating the need for `get()` calls in security rules. This makes rules simpler, more performant, and atomic. The structural segregation ensures that all documents within a given collection path (`/users/{userId}/automationTasks` or `/users/{userId}/automationTasks/{automationTaskId}/logEntries`) share the same security posture, making rule writing straightforward and highly debuggable."
   }
 }
