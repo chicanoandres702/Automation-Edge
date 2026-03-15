@@ -54,4 +54,5 @@ export interface AutomationTask {
   updatedAt: number;
   manualMode?: boolean;
   identityMode: 'persistent' | 'rotational';
+  courseContext?: string; // Metadata to isolate class-specific knowledge
 }

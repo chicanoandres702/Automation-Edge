@@ -142,14 +142,21 @@ export default function FleetNexusPage() {
     }
   };
 
+  const detectCourseContext = (p: string): string | undefined => {
+    const courseMatch = p.match(/[A-Z]{2,4}-?\d{4}/i);
+    return courseMatch ? courseMatch[0].toUpperCase() : undefined;
+  };
+
   const handleStartAutomation = async () => {
     if (!prompt.trim()) return;
 
     setIsGenerating(true);
     const rotationKeywords = ['survey', 'multi', 'account', 'signup', 'register', 'rewards', 'poll', 'vote'];
     const needsRotation = rotationKeywords.some(kw => prompt.toLowerCase().includes(kw));
+    const courseContext = detectCourseContext(prompt);
 
     addLog(`Analysis: ${needsRotation ? 'Masking Required' : 'Stability Prioritized'}`, "system");
+    if (courseContext) addLog(`Course Compartmentalization Enabled: ${courseContext}`, "info");
     
     if (needsRotation) {
       await runGeoIdSync(true);
@@ -185,7 +192,8 @@ export default function FleetNexusPage() {
         createdAt: now,
         updatedAt: now,
         manualMode,
-        identityMode: needsRotation ? 'rotational' : 'persistent'
+        identityMode: needsRotation ? 'rotational' : 'persistent',
+        courseContext
       };
 
       setActiveTask(newTask);
@@ -215,7 +223,8 @@ export default function FleetNexusPage() {
       const reasoningOutput = await contextualSurveyAwareness({
         goal: activeTask.prompt,
         memory: activeTask.memory,
-        surveyContent: currentDom
+        surveyContent: currentDom,
+        courseContext: activeTask.courseContext
       });
 
       addLog(`Reasoning: ${reasoningOutput.reasoning}`, "info");
@@ -440,7 +449,14 @@ export default function FleetNexusPage() {
           {/* Task Matrix Area */}
           <div className="flex flex-col min-h-0 space-y-4 pb-20">
             <div className="flex items-center justify-between px-1">
-              <h3 className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">Matrix_Queue</h3>
+              <div className="flex flex-col gap-0.5">
+                <h3 className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">Matrix_Queue</h3>
+                {activeTask?.courseContext && (
+                  <span className="text-[7px] font-black text-accent uppercase tracking-widest bg-accent/10 px-1 rounded w-fit">
+                    Context: {activeTask.courseContext}
+                  </span>
+                )}
+              </div>
               {activeTask && (
                 <div className="flex items-center gap-2">
                   {activeTask.status === 'retrying' && <RotateCcw className="w-3 h-3 text-accent animate-spin" />}
