@@ -142,9 +142,20 @@ export default function FleetNexusPage() {
     }
   };
 
-  const detectCourseContext = (p: string): string | undefined => {
+  const detectMissionContext = (p: string): string | undefined => {
+    // Detect Course Codes (e.g. SWK-2400)
     const courseMatch = p.match(/[A-Z]{2,4}-?\d{4}/i);
-    return courseMatch ? courseMatch[0].toUpperCase() : undefined;
+    if (courseMatch) return courseMatch[0].toUpperCase();
+
+    // Detect Project Tags (e.g. #ProjectAlpha or [MissionX])
+    const tagMatch = p.match(/#[A-Za-z0-9]+/i) || p.match(/\[([A-Za-z0-9 ]+)\]/i);
+    if (tagMatch) return tagMatch[1] || tagMatch[0];
+
+    // Detect Named Entities (e.g. Project: Marketing)
+    const namedMatch = p.match(/(?:Project|Mission|Class|Survey):\s*([A-Za-z0-9 ]+)/i);
+    if (namedMatch) return namedMatch[1].trim();
+
+    return undefined;
   };
 
   const handleStartAutomation = async () => {
@@ -153,10 +164,10 @@ export default function FleetNexusPage() {
     setIsGenerating(true);
     const rotationKeywords = ['survey', 'multi', 'account', 'signup', 'register', 'rewards', 'poll', 'vote'];
     const needsRotation = rotationKeywords.some(kw => prompt.toLowerCase().includes(kw));
-    const courseContext = detectCourseContext(prompt);
+    const missionContext = detectMissionContext(prompt);
 
     addLog(`Analysis: ${needsRotation ? 'Masking Required' : 'Stability Prioritized'}`, "system");
-    if (courseContext) addLog(`Course Compartmentalization Enabled: ${courseContext}`, "info");
+    if (missionContext) addLog(`Mission Compartmentalization: ${missionContext}`, "info");
     
     if (needsRotation) {
       await runGeoIdSync(true);
@@ -166,7 +177,7 @@ export default function FleetNexusPage() {
     }
 
     await runFleetSync(true);
-    addLog(`Synthesizing Initial Mission (Gemini 3.0)...`, "info");
+    addLog(`Synthesizing Mission Parameters (Gemini 3.0)...`, "info");
     
     try {
       const result = await generateAutomationFromPrompt(prompt);
@@ -193,12 +204,12 @@ export default function FleetNexusPage() {
         updatedAt: now,
         manualMode,
         identityMode: needsRotation ? 'rotational' : 'persistent',
-        courseContext
+        missionContext
       };
 
       setActiveTask(newTask);
       setPrompt("");
-      addLog(`Mission Risk: ${result.estimatedRisk.toUpperCase()}`, "success");
+      addLog(`Mission Synthesized. Risk: ${result.estimatedRisk.toUpperCase()}`, "success");
     } catch (error) {
       addLog("Synthesis failed: LLM error", "warn");
     } finally {
@@ -224,7 +235,7 @@ export default function FleetNexusPage() {
         goal: activeTask.prompt,
         memory: activeTask.memory,
         surveyContent: currentDom,
-        courseContext: activeTask.courseContext
+        missionContext: activeTask.missionContext
       });
 
       addLog(`Reasoning: ${reasoningOutput.reasoning}`, "info");
@@ -451,9 +462,9 @@ export default function FleetNexusPage() {
             <div className="flex items-center justify-between px-1">
               <div className="flex flex-col gap-0.5">
                 <h3 className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">Matrix_Queue</h3>
-                {activeTask?.courseContext && (
+                {activeTask?.missionContext && (
                   <span className="text-[7px] font-black text-accent uppercase tracking-widest bg-accent/10 px-1 rounded w-fit">
-                    Context: {activeTask.courseContext}
+                    Context: {activeTask.missionContext}
                   </span>
                 )}
               </div>

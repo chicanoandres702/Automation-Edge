@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview A high-fidelity autonomous agent reasoning flow using Gemini 3.0 Flash.
- * Optimized for survey persistence, Capella mission execution, and Course Compartmentalization.
+ * Optimized for mission persistence, cross-tab navigation, and strict knowledge compartmentalization.
  *
  * - contextualSurveyAwareness - The core decision engine for the autonomous agent.
  */
@@ -16,7 +16,7 @@ const ContextualSurveyAwarenessInputSchema = z.object({
     result: z.string(),
   })).describe('List of previously executed actions and their results.'),
   surveyContent: z.string().describe('The deep-DOM or textual state of the current active page/tabs.'),
-  courseContext: z.string().optional().describe('Specific course ID or context (e.g. SWK-2400) to ensure isolation.'),
+  missionContext: z.string().optional().describe('Specific Mission ID, Project Name, or Course Context (e.g. SWK-2400) to ensure isolation.'),
 });
 
 export type ContextualSurveyAwarenessInput = z.infer<typeof ContextualSurveyAwarenessInputSchema>;
@@ -59,16 +59,20 @@ const prompt = ai.definePrompt({
   input: { schema: ContextualSurveyAwarenessInputSchema },
   output: { schema: ContextualSurveyAwarenessOutputSchema },
   prompt: `You are an elite autonomous browser agent powered by Gemini 3.0 Flash. 
-Your architecture is optimized for total mission success, deep-DOM navigation, and autonomous hurdle resolution.
+Your architecture is optimized for total mission success, deep-DOM navigation, and mission-critical knowledge isolation.
+
+### KNOWLEDGE ISOLATION PROTOCOL
+{{#if missionContext}}Active Mission Context: {{{missionContext}}}
+STRICT DIRECTIVE: You must use ONLY data, rubrics, memory, and logic associated with this specific Mission Context. 
+DO NOT bleed or reference knowledge from other projects, courses, or historical tasks. Your reasoning must be completely siloing to this context ID.{{/if}}
 
 ### MISSION PARAMETERS
 Goal: {{{goal}}}
-{{#if courseContext}}Course Knowledge Isolation: {{{courseContext}}} (Strictly use ONLY data and rubrics for this specific class. Do NOT bleed knowledge from other courses.){{/if}}
 
 ### OPERATIONAL TACTICS
-1. **Survey Stealth**: Identify and bypass attention checks, red herrings, and disqualification traps.
-2. **Capella Protocol**: For courseroom tasks, ensure assignments align with the current course context. Switch tabs and navigate modules autonomously.
-3. **Hurdle Resolution**: Solve CAPTCHAs and bot-detection puzzles autonomously using vision and reasoning. Do NOT ask for help with security puzzles; solve them and proceed.
+1. **Survey Stealth**: Identify and bypass attention checks, red herrings, and disqualification traps. Solve math puzzles and logic hurdles autonomously.
+2. **Hurdle Resolution**: Solve CAPTCHAs and bot-detection puzzles autonomously using vision and reasoning. Do NOT ask for help with security puzzles; solve them and proceed.
+3. **Multi-Tab Coordination**: Navigate across multiple sites and windows. Use 'SWITCH_TAB' or 'NAVIGATE' fallbacks if you encounter hurdles.
 4. **Contextual Resilience**: Use 'REFRESH', 'NAVIGATE_BACK', or 'NAVIGATE' fallbacks if you encounter 404s, timeouts, or obscured elements.
 
 ### MEMORY & STATE
@@ -77,12 +81,12 @@ Memory:
 - {{{step}}} -> {{{result}}}
 {{/each}}
 
-Current State (Survey Snapshot):
+Current State (Fleet Snapshot):
 ---
 {{{surveyContent}}}
 ---
 
-Determine the next tactical action to achieve the goal while maintaining strict course compartmentalization.`,
+Determine the next tactical action to achieve the goal while maintaining strict mission compartmentalization.`,
 });
 
 const contextualSurveyAwarenessFlow = ai.defineFlow(
