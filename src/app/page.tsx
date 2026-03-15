@@ -21,9 +21,10 @@ import {
   Globe,
   Database,
   Lock,
-  Box
+  Box,
+  RotateCcw
 } from "lucide-react";
-import { AutomationTask, AutomationStep, ActionType } from "@/lib/types";
+import { AutomationTask, AutomationStep, ActionType, AutomationStatus } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
 import { contextualSurveyAwareness } from "@/ai/flows/contextual-survey-awareness";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +35,8 @@ import { Separator } from "@/components/ui/separator";
 import { AgentVisualizer } from "@/components/automation/visualizer";
 import { captureGlobalContext } from "@/lib/dom-traversal";
 import { cn } from "@/lib/utils";
+
+const MAX_GLOBAL_RETRIES = 3;
 
 export default function FleetNexusPage() {
   const [mounted, setMounted] = useState(false);
@@ -143,7 +146,9 @@ export default function FleetNexusPage() {
         id: `step-${now}-${idx}`,
         description: s,
         type: mapActionType(s),
-        status: 'pending'
+        status: 'pending',
+        retryCount: 0,
+        maxRetries: 3
       }));
 
       const newTask: AutomationTask = {
@@ -169,11 +174,16 @@ export default function FleetNexusPage() {
     }
   };
 
-  const executeNextStep = useCallback(async () => {
+  const executeNextStep = useCallback(async (isRetry = false) => {
     if (!activeTask) return;
 
+    const currentIndex = activeTask.currentStepIndex;
+    const currentStep = activeTask.steps[currentIndex];
+
+    if (!currentStep) return;
+
     setIsReconsidering(true);
-    addLog("Contextual Re-evaluation...", "system");
+    addLog(isRetry ? `Retrying Step [${currentIndex + 1}]...` : "Contextual Re-evaluation...", "system");
     
     const currentDom = await runFleetSync(true);
     
@@ -183,50 +193,94 @@ export default function FleetNexusPage() {
         taskDescription: activeTask.prompt
       });
 
+      // Handle failure or low confidence
       if (analysis.nextAction === 'FLAG_FOR_REVIEW' || analysis.confidenceScore < 0.4) {
-        addLog("AI Intervention required.", "warn");
-        setActiveTask(prev => prev ? { ...prev, status: 'intervention_required' } : null);
-        setIsReconsidering(false);
-        return;
+        if (currentStep.retryCount < currentStep.maxRetries) {
+          addLog(`Confidence Low (${Math.round(analysis.confidenceScore * 100)}%). Scheduling Retry.`, "warn");
+          
+          setActiveTask(prev => {
+            if (!prev) return null;
+            const updatedSteps = [...prev.steps];
+            updatedSteps[currentIndex] = {
+              ...currentStep,
+              status: 'retrying',
+              retryCount: currentStep.retryCount + 1,
+              lastError: 'Low confidence analysis'
+            };
+            return { ...prev, steps: updatedSteps, status: 'retrying' as AutomationStatus };
+          });
+
+          // Wait before retry
+          await new Promise(r => setTimeout(r, 2000));
+          return executeNextStep(true);
+        } else {
+          addLog("Max retries reached. AI Intervention required.", "warn");
+          setActiveTask(prev => prev ? { ...prev, status: 'intervention_required' } : null);
+          setIsReconsidering(false);
+          return;
+        }
       }
 
+      // Successful analysis and execution
       setActiveTask(prev => {
         if (!prev) return null;
         
         const isLastStep = prev.currentStepIndex >= prev.steps.length - 1;
-        
+        const updatedSteps = [...prev.steps];
+        updatedSteps[currentIndex] = { ...currentStep, status: 'completed' };
+
         if (isLastStep && prev.status === 'running') {
           addLog("Objective Finalized.", "success");
-          return { ...prev, status: 'completed' as const, updatedAt: Date.now() };
+          return { 
+            ...prev, 
+            steps: updatedSteps,
+            status: 'completed' as const, 
+            updatedAt: Date.now() 
+          };
         }
 
         const nextIndex = prev.currentStepIndex + 1;
-        const nextStep = prev.steps[nextIndex];
+        const nextStepDescription = prev.steps[nextIndex]?.description || "Next Operation";
 
-        addLog(`Executing: ${nextStep.description}`, "info");
+        addLog(`Executed: ${currentStep.description}`, "success");
+        addLog(`Preparing: ${nextStepDescription}`, "info");
         
         return { 
           ...prev, 
+          steps: updatedSteps,
           currentStepIndex: nextIndex, 
           status: prev.manualMode ? 'paused' : 'running',
           updatedAt: Date.now() 
         };
       });
     } catch (err) {
-      addLog("Logic Fault: Sequence continued.", "warn");
-      setActiveTask(prev => {
-        if (!prev) return null;
-        const nextIndex = prev.currentStepIndex + 1;
-        if (nextIndex >= prev.steps.length) return { ...prev, status: 'completed' };
-        return { ...prev, currentStepIndex: nextIndex };
-      });
+      if (currentStep.retryCount < currentStep.maxRetries) {
+        addLog(`Logic Fault. Retrying (${currentStep.retryCount + 1}/${currentStep.maxRetries})...`, "warn");
+        
+        setActiveTask(prev => {
+          if (!prev) return null;
+          const updatedSteps = [...prev.steps];
+          updatedSteps[currentIndex] = {
+            ...currentStep,
+            status: 'retrying',
+            retryCount: currentStep.retryCount + 1
+          };
+          return { ...prev, steps: updatedSteps, status: 'retrying' as AutomationStatus };
+        });
+
+        await new Promise(r => setTimeout(r, 2000));
+        return executeNextStep(true);
+      }
+
+      addLog("Critical Fault: Sequence halted.", "warn");
+      setActiveTask(prev => prev ? { ...prev, status: 'error' } : null);
     } finally {
       setIsReconsidering(false);
     }
   }, [activeTask, addLog, runFleetSync]);
 
   useEffect(() => {
-    if (activeTask && activeTask.status === 'running' && !activeTask.manualMode && !isReconsidering) {
+    if (activeTask && (activeTask.status === 'running' || activeTask.status === 'retrying') && !activeTask.manualMode && !isReconsidering) {
       executionTimer.current = setTimeout(() => {
         executeNextStep();
       }, 3500);
@@ -275,7 +329,7 @@ export default function FleetNexusPage() {
           setActiveTask(null);
           addLog("Purged.", "warn");
         }}
-        onStep={executeNextStep}
+        onStep={() => executeNextStep()}
         manualMode={manualMode}
         onToggleManual={(val) => {
           setManualMode(val);
@@ -307,7 +361,7 @@ export default function FleetNexusPage() {
           <div className="flex items-center gap-3">
             <div className={cn(
               "w-2 h-2 rounded-full",
-              (activeTask?.status === 'running' || isSyncing || isGenerating || isReconsidering) 
+              (activeTask?.status === 'running' || activeTask?.status === 'retrying' || isSyncing || isGenerating || isReconsidering) 
                 ? "bg-accent animate-pulse shadow-[0_0_8px_hsl(var(--accent))]" 
                 : "bg-muted-foreground/40"
             )} />
@@ -369,7 +423,12 @@ export default function FleetNexusPage() {
             <div className="flex items-center justify-between px-1">
               <h3 className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">Matrix_Queue</h3>
               {activeTask && (
-                <span className="text-[8px] font-mono text-muted-foreground/40">{activeTask.currentStepIndex + 1}/{activeTask.steps.length} OPS</span>
+                <div className="flex items-center gap-2">
+                  {activeTask.status === 'retrying' && (
+                    <RotateCcw className="w-3 h-3 text-accent animate-spin" />
+                  )}
+                  <span className="text-[8px] font-mono text-muted-foreground/40">{activeTask.currentStepIndex + 1}/{activeTask.steps.length} OPS</span>
+                </div>
               )}
             </div>
             

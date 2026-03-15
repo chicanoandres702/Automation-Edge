@@ -1,4 +1,4 @@
-export type AutomationStatus = 'idle' | 'running' | 'paused' | 'error' | 'completed' | 'seeking' | 'intervention_required';
+export type AutomationStatus = 'idle' | 'running' | 'paused' | 'error' | 'completed' | 'seeking' | 'intervention_required' | 'retrying';
 
 export type ActionType = 'click' | 'type' | 'scroll' | 'touch' | 'navigate' | 'wait' | 'extract' | 'switch-tab';
 
@@ -9,8 +9,11 @@ export interface AutomationStep {
   target?: string; // CSS Selector or XPath
   value?: string;  // Text to type or URL
   tabId?: number;  // Target tab for the action
-  status: 'pending' | 'active' | 'completed' | 'failed' | 'needs_review';
+  status: 'pending' | 'active' | 'completed' | 'failed' | 'needs_review' | 'retrying';
+  retryCount: number;
+  maxRetries: number;
   timestamp?: number;
+  lastError?: string;
 }
 
 export interface TabContext {

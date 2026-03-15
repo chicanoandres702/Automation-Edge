@@ -15,7 +15,8 @@ import {
   Search,
   GripVertical,
   Eye,
-  ArrowRight
+  ArrowRight,
+  RotateCcw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -80,9 +81,11 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
                 className="divide-y divide-white/5"
               >
                 {steps.map((step, index) => {
-                  const isActive = index === currentStepIndex && (status === 'running' || status === 'intervention_required');
+                  const isCurrent = index === currentStepIndex;
+                  const isActive = isCurrent && (status === 'running' || status === 'intervention_required' || status === 'retrying');
                   const isCompleted = index < currentStepIndex || (index === currentStepIndex && status === 'completed');
                   const isPending = index > currentStepIndex;
+                  const isRetrying = isCurrent && status === 'retrying';
                   const needsReview = step.status === 'needs_review' || (isActive && status === 'intervention_required');
 
                   return (
@@ -115,10 +118,18 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
                           </div>
 
                           <div className="space-y-1 min-w-0">
-                            <div className="flex items-center gap-1.5 px-1 py-0.5 rounded border border-white/5 bg-white/5 w-fit">
-                              {getActionIcon(step.type)}
-                              <span className="text-[6px] font-black uppercase tracking-tighter">{step.type}</span>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5 px-1 py-0.5 rounded border border-white/5 bg-white/5 w-fit">
+                                {getActionIcon(step.type)}
+                                <span className="text-[6px] font-black uppercase tracking-tighter">{step.type}</span>
+                              </div>
+                              {step.retryCount > 0 && (
+                                <span className="text-[6px] font-black text-accent uppercase tracking-widest bg-accent/10 px-1 rounded">
+                                  Retry {step.retryCount}
+                                </span>
+                              )}
                             </div>
+                            
                             <p className={cn(
                               "text-[9px] font-bold leading-tight truncate pr-2",
                               isActive ? "text-foreground" : "text-muted-foreground"
@@ -145,6 +156,8 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
                             )}>
                               {needsReview ? (
                                 <AlertCircle className="w-3 h-3 text-destructive animate-bounce" />
+                              ) : isRetrying ? (
+                                <RotateCcw className="w-3 h-3 text-accent animate-spin" />
                               ) : isActive ? (
                                 <Loader2 className="w-3 h-3 animate-spin" />
                               ) : isCompleted ? (
