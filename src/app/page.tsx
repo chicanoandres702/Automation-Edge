@@ -19,7 +19,8 @@ import {
   Search,
   Eye,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  History
 } from "lucide-react";
 import { AutomationTask, AutomationStep, ExecutionMemory } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
@@ -28,7 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AgentVisualizer } from "@/components/automation/visualizer";
-import { captureGlobalContext } from "@/lib/dom-traversal";
+import { captureGlobalContext, executeAction } from "@/lib/dom-traversal";
 import { cn } from "@/lib/utils";
 import { useFirebase } from "@/firebase";
 import { doc, setDoc, collection, getDocs, getDoc, arrayUnion } from "firebase/firestore";
@@ -43,6 +44,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { SettingsDialog } from "@/components/settings/settings-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useCollection } from "@/firebase/firestore/use-collection";
 
 export default function NexusControlCenter() {
   const [mounted, setMounted] = useState(false);
@@ -127,6 +130,11 @@ export default function NexusControlCenter() {
         setIsInterventionOpen(true);
         setActiveTask(prev => prev ? { ...prev, status: 'intervention_required' } : null);
         return;
+      }
+
+      // Execute Action Bridge
+      if (result.action !== 'ASK_USER' && result.action !== 'WAIT') {
+        await executeAction(result.action, result.parameters);
       }
 
       const stepResult: ExecutionMemory = { 
@@ -363,11 +371,22 @@ export default function NexusControlCenter() {
 
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
             <div className="lg:col-span-8 flex flex-col min-h-0">
-              <AgentVisualizer 
-                steps={activeTask?.steps || []} 
-                currentStepIndex={activeTask?.currentStepIndex || 0}
-                status={activeTask?.status || 'idle'}
-              />
+              <Tabs defaultValue="matrix" className="flex-1 flex flex-col min-h-0">
+                <TabsList className="bg-white/5 border-white/5 p-1 mb-4 inline-flex w-fit">
+                  <TabsTrigger value="matrix" className="text-[10px] font-black uppercase tracking-widest">Operation Matrix</TabsTrigger>
+                  <TabsTrigger value="history" className="text-[10px] font-black uppercase tracking-widest">Mission Registry</TabsTrigger>
+                </TabsList>
+                <TabsContent value="matrix" className="flex-1 min-h-0 mt-0">
+                  <AgentVisualizer 
+                    steps={activeTask?.steps || []} 
+                    currentStepIndex={activeTask?.currentStepIndex || 0}
+                    status={activeTask?.status || 'idle'}
+                  />
+                </TabsContent>
+                <TabsContent value="history" className="flex-1 min-h-0 mt-0">
+                  <PersistenceRegistry />
+                </TabsContent>
+              </Tabs>
             </div>
 
             <div className="lg:col-span-4 hidden md:flex flex-col min-h-0 space-y-4">
@@ -452,5 +471,42 @@ export default function NexusControlCenter() {
         <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
       </SidebarInset>
     </>
+  );
+}
+
+function PersistenceRegistry() {
+  const { data: missions } = useCollection<any>("missions");
+  
+  return (
+    <Card className="flex-1 bg-black/40 backdrop-blur-md border-white/5 p-6 rounded-3xl flex flex-col min-h-0 overflow-hidden">
+      <div className="flex items-center gap-3 mb-6">
+        <History className="w-4 h-4 text-primary" />
+        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground">Mission Registry</h3>
+      </div>
+      <ScrollArea className="flex-1">
+        <div className="space-y-3">
+          {missions?.map((mission: any) => (
+            <div key={mission.id} className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between hover:border-primary/20 transition-all group">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-black text-primary uppercase">{mission.missionId}</span>
+                <span className="text-[9px] text-muted-foreground">Updated {new Date(mission.updatedAt).toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 bg-accent/10 px-2 py-1 rounded-lg border border-accent/20">
+                  <span className="text-[8px] font-black text-accent uppercase">{mission.memory?.length || 0} Nodes Synced</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </div>
+          ))}
+          {!missions?.length && (
+             <div className="py-20 flex flex-col items-center justify-center opacity-20 border-2 border-dashed rounded-3xl border-white/5">
+                <Terminal className="w-12 h-12 mb-4" />
+                <p className="text-[10px] font-black uppercase">No persisted missions found</p>
+             </div>
+          )}
+        </div>
+      </ScrollArea>
+    </Card>
   );
 }

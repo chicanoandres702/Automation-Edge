@@ -14,7 +14,9 @@ import {
   Trash2, 
   Shield, 
   Zap, 
-  Database
+  Database,
+  Fingerprint,
+  RefreshCcw
 } from "lucide-react";
 import { useFirebase } from "@/firebase";
 import { useCollection } from "@/firebase/firestore/use-collection";
@@ -23,6 +25,8 @@ import { Slider } from "@/components/ui/slider";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -36,6 +40,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   
   const [autonomyThreshold, setAutonomyThreshold] = useState([0.85]);
   const [activeTab, setActiveTab] = useState("autonomy");
+  const [identityMode, setIdentityMode] = useState(true); // Persistent by default
 
   const handleDeleteTool = async (id: string) => {
     await deleteDoc(doc(db, "tools", id));
@@ -51,6 +56,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl bg-background/95 backdrop-blur-3xl border-white/10 rounded-3xl p-0 overflow-hidden ring-1 ring-white/10 shadow-2xl">
+        <DialogTitle className="sr-only">Nexus Fleet Settings</DialogTitle>
         <DialogDescription className="sr-only">
           Configure Nexus agent autonomy, shared tool infrastructure, and learned success patterns.
         </DialogDescription>
@@ -61,9 +67,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <div className="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30">
                   <Settings className="w-4 h-4 text-primary" />
                 </div>
-                <DialogTitle className="text-[10px] font-black uppercase tracking-widest text-foreground/90">
+                <span className="text-[10px] font-black uppercase tracking-widest text-foreground/90">
                   Nexus Settings
-                </DialogTitle>
+                </span>
              </div>
              
              <div className="flex flex-col gap-1.5">
@@ -128,6 +134,17 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                              min={0.5}
                              className="py-2"
                           />
+                       </div>
+
+                       <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                             <Fingerprint className="w-4 h-4 text-accent" />
+                             <div className="flex flex-col">
+                                <span className="text-[10px] font-black uppercase tracking-tight">Persistent Identity Mode</span>
+                                <span className="text-[8px] text-muted-foreground">Maintains consistent browser fingerprint across tabs.</span>
+                             </div>
+                          </div>
+                          <Switch checked={identityMode} onCheckedChange={setIdentityMode} className="scale-75 data-[state=checked]:bg-accent" />
                        </div>
 
                        <div className="grid grid-cols-2 gap-4">
