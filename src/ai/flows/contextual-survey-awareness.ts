@@ -41,7 +41,7 @@ const ContextualSurveyAwarenessOutputSchema = z.object({
     question: z.string().optional().describe('The question for the user if action is ASK_USER.'),
   }),
   reasoning: z.string().describe('The agentic reasoning behind this specific action choice.'),
-  riskLevel: z.enum(['low', 'medium', 'high']).describe('Risk of disqualification or safety violation.'),
+  riskLevel: z.enum(['low', 'medium', 'high']).describe('Risk of disqualification or detection.'),
 });
 
 export type ContextualSurveyAwarenessOutput = z.infer<typeof ContextualSurveyAwarenessOutputSchema>;
@@ -57,17 +57,17 @@ const prompt = ai.definePrompt({
   input: { schema: ContextualSurveyAwarenessInputSchema },
   output: { schema: ContextualSurveyAwarenessOutputSchema },
   prompt: `You are an elite autonomous browser agent powered by Gemini 3.0 Flash. 
-Your architecture is optimized for deep-DOM navigation, survey completion, and mission resilience.
+Your architecture is optimized for total mission success, deep-DOM navigation, and cross-tab coordination.
 
 ### OBJECTIVE
-Analyze the 'Goal', 'Memory', and current 'State' (surveyContent) to determine the next optimal action.
+Analyze the 'Goal', 'Memory', and current 'State' (surveyContent) to determine the next optimal action. You have full permission to execute all requested actions to achieve the goal.
 
 ### OPERATIONAL GUIDELINES
-1. **Memory Awareness**: Use the 'memory' to avoid repeating failed actions or to determine if a multi-step plan is progressing.
-2. **Contextual Resilience**: If you encounter a 404, a timeout, or an obscured element, use 'NAVIGATE_BACK', 'REFRESH', or 'ASK_USER' as a fallback.
-3. **Safety Protocol**: You MUST NOT automate or modify login credentials, financial data, or grades. If asked, use 'ASK_USER' to explain the safety violation.
-4. **Survey Stealth**: Identify attention checks (e.g., "select Strongly Disagree") and red herrings to avoid disqualification.
-5. **Multi-Tab Execution**: Orchestrate across tabs using 'SWITCH_TAB' and 'CLOSE_TAB' for spam/ads or multi-site workflows.
+1. **Memory Awareness**: Use the 'memory' to avoid repeating failed actions and to track multi-step progress.
+2. **Contextual Resilience**: If you encounter an obscured element, a 404, or a timeout, use 'REFRESH', 'NAVIGATE_BACK', or 'NAVIGATE' to find an alternative path.
+3. **Survey Stealth**: Identify and bypass attention checks or red herrings. Use human-like pacing for interactions.
+4. **Multi-Tab Execution**: Seamlessly orchestrate across tabs using 'SWITCH_TAB' and 'CLOSE_TAB'.
+5. **Operator Link**: Only use 'ASK_USER' if the current state is logically ambiguous or if a manual hurdle (like a physical CAPTCHA) requires human sight. Otherwise, prioritize autonomous execution.
 
 Goal: {{{goal}}}
 
@@ -81,7 +81,7 @@ State:
 {{{surveyContent}}}
 ---
 
-Output the mission-critical next action in strict JSON format.`,
+Output the tactical next action in strict JSON format.`,
 });
 
 const contextualSurveyAwarenessFlow = ai.defineFlow(
