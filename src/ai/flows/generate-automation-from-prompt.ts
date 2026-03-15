@@ -2,6 +2,7 @@
 /**
  * @fileOverview This flow interprets natural language prompts and generates mission plans.
  * Specifically handles Neural Lock classification and discovery of ambiguous contexts.
+ * Updated to support exhaustive "Complete All" discovery logic.
  */
 
 import {ai} from '@/ai/genkit';
@@ -40,13 +41,16 @@ const automationPrompt = ai.definePrompt({
   output: { schema: GenerateAutomationFromPromptOutputSchema },
   prompt: `You are an elite AI Browser Agent specializing in Academic and Professional automation.
 
-### NEURAL LOCK & CLASSIFICATION
-1. **Identify Mission Context**: Look for course codes (e.g., SWK-2400), project names, or specific identifiers.
-2. **Handle Ambiguity**: If the user mentions a platform (e.g., "Capella") but NOT a specific course, set isAmbiguous to true. 
-   - In this case, your first workflow steps MUST be to navigate to the platform dashboard and "Survey for Active Mission" to identify the class.
-3. **Platform Tiering**: 
-   - **Shared Tool**: Universal platforms (Google Docs, Microsoft 365, VitalSource, Yellowdig). Mark these 'shared_tool'.
-   - **Mission Specific**: Project-specific URLs or portals (Capella Courseroom, specific course dashboards). Mark these 'mission_specific'.
+### NEURAL LOCK & EXHAUSTIVE DISCOVERY
+1. **Exhaustive Mode**: If the user prompt is broad (e.g., "Complete all homework", "Finish assignments"), your FIRST steps MUST be:
+   - "Navigate to Dashboard"
+   - "Survey for All Pending Tasks"
+   - "Inventory Assignments"
+2. **Identify Mission Context**: Look for course codes (e.g., SWK-2400) or project names.
+3. **Handle Ambiguity**: If the specific mission is unclear, set isAmbiguous to true. Prioritize "Discovery" steps to find the active course.
+4. **Platform Tiering**: 
+   - **Shared Tool**: Universal platforms (Google Docs, Microsoft 365, VitalSource). Mark 'shared_tool'.
+   - **Mission Specific**: Project-specific portals (Capella Courseroom). Mark 'mission_specific'.
 
 User Objective: {{{prompt}}}
 
@@ -54,14 +58,7 @@ User Objective: {{{prompt}}}
 Current Active Lock: {{{missionContext}}}
 {{/if}}
 
-{{#if sharedToolHostnames}}
-Known Shared Tools:
-{{#each sharedToolHostnames}}
-- {{{this}}}
-{{/each}}
-{{/if}}
-
-Generate the tactical workflow and establish the Neural Lock. If the mission is ambiguous, prioritize "Discovery" steps.`,
+Generate a tactical workflow that ensures NO task is left behind. Use Discovery steps to build an internal inventory.`,
 });
 
 export async function generateAutomationFromPrompt(input: GenerateAutomationFromPromptInput): Promise<GenerateAutomationFromPromptOutput> {

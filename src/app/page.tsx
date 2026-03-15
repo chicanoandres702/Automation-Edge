@@ -78,10 +78,12 @@ export default function NexusControlCenter() {
   const executeNextStep = async () => {
     if (!activeTask) return;
 
+    // Check if we've reached the end of generated steps, but verify goal achievement
     const currentStep = activeTask.steps[activeTask.currentStepIndex];
     if (!currentStep) {
-       setActiveTask(prev => prev ? { ...prev, status: 'completed' } : null);
-       addLog("Mission Objective Fulfilled: All nodes resolved.", "success");
+       // If no more steps, we trigger one last 'survey' to verify if the goal is actually done
+       addLog("Verifying Mission Finality...", "system");
+       await verifyGoalCompletion();
        return;
     }
 
@@ -96,9 +98,6 @@ export default function NexusControlCenter() {
         const missionSnap = await getDoc(missionRef);
         if (missionSnap.exists()) {
           missionMemory = missionSnap.data().memory || [];
-          if (missionMemory.length > 0 && activeTask.currentStepIndex === 0) {
-            addLog(`Progressive Continuity: Loaded ${missionMemory.length} historical nodes for ${activeTask.missionContext}.`, "system");
-          }
         }
       }
 
@@ -122,7 +121,7 @@ export default function NexusControlCenter() {
         return;
       }
 
-      // Autonomous context discovery logic
+      // Autonomous discovery and neural lock transition
       if (activeTask.status === 'seeking' && result.reasoning.includes("Identified mission:")) {
         const discoveredId = result.reasoning.split("Identified mission:")[1].trim().split(" ")[0];
         setMissionId(discoveredId);
@@ -131,13 +130,12 @@ export default function NexusControlCenter() {
         setActiveTask(prev => prev ? { ...prev, missionContext: discoveredId, status: 'running' } : null);
       }
 
-      const nextStepIndex = activeTask.currentStepIndex + 1;
       const stepResult: ExecutionMemory = { 
         step: currentStep.description, 
         result: `Action ${result.action} Verified: ${result.reasoning}` 
       };
 
-      // Persistent Update: Save to specific course/project silo
+      // Persistent Update
       if (activeTask.missionContext) {
         const missionRef = doc(db, "missions", activeTask.missionContext);
         setDoc(missionRef, {
@@ -147,17 +145,58 @@ export default function NexusControlCenter() {
         }, { merge: true });
       }
 
-      setActiveTask(prev => prev ? {
-        ...prev,
-        currentStepIndex: nextStepIndex,
-        memory: [...prev.memory, stepResult],
-        updatedAt: Date.now()
-      } : null);
-
-      addLog(`Tactical Success: ${result.action}`, "success");
+      // If AI says the goal is achieved, we can complete. Otherwise, we advance or loop.
+      if (result.isGoalAchieved) {
+        setActiveTask(prev => prev ? { ...prev, status: 'completed' } : null);
+        addLog("Mission Objective Fulfilled: Goal Verified.", "success");
+      } else {
+        const nextStepIndex = activeTask.currentStepIndex + 1;
+        setActiveTask(prev => prev ? {
+          ...prev,
+          currentStepIndex: nextStepIndex,
+          memory: [...prev.memory, stepResult],
+          updatedAt: Date.now()
+        } : null);
+        addLog(`Tactical Success: ${result.action}`, "success");
+      }
 
     } catch (error) {
       addLog("Node Stream Error: Attempting self-healing recovery.", "warn");
+      // Prevent exit by keeping status running
+      setActiveTask(prev => prev ? { ...prev, status: 'running' } : null);
+    }
+  };
+
+  const verifyGoalCompletion = async () => {
+    if (!activeTask) return;
+    
+    const stateSnapshot = await captureGlobalContext();
+    const result = await contextualSurveyAwareness({
+      goal: activeTask.prompt,
+      memory: activeTask.memory,
+      surveyContent: stateSnapshot,
+      missionContext: activeTask.missionContext,
+    });
+
+    if (result.isGoalAchieved) {
+      setActiveTask(prev => prev ? { ...prev, status: 'completed' } : null);
+      addLog("Mission Verified Complete: No pending tasks found.", "success");
+    } else {
+      addLog("Post-Action Survey: More work remains. Extending workflow.", "system");
+      // Add a dynamic step to keep the loop alive
+      const newStep: AutomationStep = {
+        id: `dynamic-${Date.now()}`,
+        description: `Recursive Node: Resolve remaining tasks for ${activeTask.prompt}`,
+        type: 'navigate',
+        status: 'pending',
+        retryCount: 0,
+        maxRetries: 3
+      };
+      setActiveTask(prev => prev ? {
+        ...prev,
+        steps: [...prev.steps, newStep],
+        status: 'running'
+      } : null);
     }
   };
 
@@ -177,7 +216,6 @@ export default function NexusControlCenter() {
         sharedToolHostnames 
       });
 
-      // Neural Lock Activation or Discovery
       let initialStatus: AutomationTask['status'] = 'running';
       if (result.neuralLock.missionId) {
         setMissionId(result.neuralLock.missionId);
@@ -188,7 +226,6 @@ export default function NexusControlCenter() {
         addLog(`Ambiguous Context: Agent in Discovery Mode.`, "warn");
       }
 
-      // Register newly discovered shared tools
       for (const platform of result.classifiedPlatforms) {
         if (platform.type === 'shared_tool') {
           const toolId = platform.hostname.split('.')[0];
@@ -197,7 +234,6 @@ export default function NexusControlCenter() {
             hostname: platform.hostname,
             isShared: true
           }, { merge: true });
-          addLog(`Shared Tool Registered: ${platform.hostname}`, "system");
         }
       }
 
@@ -226,7 +262,7 @@ export default function NexusControlCenter() {
       });
       
       setPrompt("");
-      addLog(`Mission Initiated. Progressive continuity layer active.`, "success");
+      addLog(`Mission Initiated. Anti-Cancellation Protocol Active.`, "success");
     } catch (error) {
       addLog("Synthesis failure. Check neural link.", "warn");
     } finally {
@@ -267,7 +303,6 @@ export default function NexusControlCenter() {
       />
       
       <SidebarInset className="bg-background flex flex-col h-screen relative overflow-hidden">
-        {/* Agent Portrait (Mobile-Optimized Sidebar Layout) */}
         <div 
           className="absolute left-0 top-0 w-1/3 h-full z-0 opacity-15 pointer-events-none transition-opacity duration-1000 hidden md:block"
           style={{
@@ -314,7 +349,7 @@ export default function NexusControlCenter() {
                 <div className="relative group flex-1">
                   <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40 group-focus-within:text-primary transition-colors" />
                   <Input 
-                    placeholder="Input objective (e.g. Complete Capella assignments)..."
+                    placeholder="Input objective (e.g. Complete all homework)..."
                     className="bg-transparent border-none text-sm h-12 pl-10 focus-visible:ring-0"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
@@ -342,17 +377,6 @@ export default function NexusControlCenter() {
                   <Activity className="w-4 h-4 text-primary" />
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Tactical Stream</h3>
                 </div>
-                {activeTask && (
-                   <div className="flex items-center gap-2">
-                     <span className="text-[8px] font-bold text-muted-foreground uppercase">Context Silo:</span>
-                     <span className={cn(
-                       "text-[9px] font-black px-2 py-0.5 rounded border",
-                       activeTask.status === 'seeking' ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-500" : "bg-primary/10 border-primary/20 text-primary"
-                     )}>
-                       {activeTask.status === 'seeking' ? 'Scanning Dashboard...' : activeTask.missionContext || 'Universal'}
-                     </span>
-                   </div>
-                )}
               </div>
               <div className="flex-1 min-h-0">
                 <AgentVisualizer 
@@ -366,7 +390,7 @@ export default function NexusControlCenter() {
             <div className="lg:col-span-4 hidden md:flex flex-col min-h-0 space-y-3">
               <div className="flex items-center gap-2 px-2">
                 <Terminal className="w-4 h-4 text-accent" />
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Continuity Matrix</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Persistence Matrix</h3>
               </div>
               <Card className="flex-1 bg-black/40 backdrop-blur-md border-white/5 p-4 rounded-3xl flex flex-col min-h-0 ring-1 ring-white/5">
                  <ScrollArea className="flex-1">
