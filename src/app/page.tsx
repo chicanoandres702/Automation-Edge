@@ -155,7 +155,7 @@ export default function NexusControlCenter() {
         sharedToolHostnames 
       });
 
-      // AI Context Extraction
+      // AI Context Extraction - Try to detect context ID from result or prompt
       const detectedMission = result.classifiedPlatforms.find(p => p.type === 'mission_specific')?.reason.match(/[A-Z]{2,}-\d{4}/)?.[0] || missionId;
       if (detectedMission && !missionId) {
         setMissionId(detectedMission);
