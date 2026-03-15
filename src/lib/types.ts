@@ -55,4 +55,5 @@ export interface AutomationTask {
   manualMode?: boolean;
   identityMode: 'persistent' | 'rotational';
   missionContext?: string; // Metadata to isolate project/class-specific knowledge
+  platformContext?: string; // Metadata for shared platform tools (e.g. Capella, Microsoft365)
 }

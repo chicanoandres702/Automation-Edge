@@ -138,17 +138,17 @@ export default function FleetNexusPage() {
     }
   };
 
-  const detectMissionContext = (p: string): string | undefined => {
+  const detectContexts = (p: string) => {
+    const platformKeywords = ['capella', 'microsoft', 'vitalsource', 'library', 'canvas', 'blackboard'];
+    const foundPlatform = platformKeywords.find(k => p.toLowerCase().includes(k));
+    
     const courseMatch = p.match(/[A-Z]{2,4}-?\d{4}/i);
-    if (courseMatch) return courseMatch[0].toUpperCase();
-
-    const tagMatch = p.match(/#[A-Za-z0-9]+/i) || p.match(/\[([A-Za-z0-9 ]+)\]/i);
-    if (tagMatch) return tagMatch[1] || tagMatch[0];
-
-    const namedMatch = p.match(/(?:Project|Mission|Class|Survey):\s*([A-Za-z0-9 ]+)/i);
-    if (namedMatch) return namedMatch[1].trim();
-
-    return undefined;
+    const missionContext = courseMatch ? courseMatch[0].toUpperCase() : undefined;
+    
+    return {
+      platformContext: foundPlatform ? foundPlatform.charAt(0).toUpperCase() + foundPlatform.slice(1) : undefined,
+      missionContext
+    };
   };
 
   const handleStartAutomation = async () => {
@@ -157,10 +157,11 @@ export default function FleetNexusPage() {
     setIsGenerating(true);
     const rotationKeywords = ['survey', 'multi', 'account', 'signup', 'register', 'rewards', 'poll', 'vote'];
     const needsRotation = rotationKeywords.some(kw => prompt.toLowerCase().includes(kw));
-    const missionContext = detectMissionContext(prompt);
+    const { platformContext, missionContext } = detectContexts(prompt);
 
     addLog(`Analysis: ${needsRotation ? 'Masking Required' : 'Stability Prioritized'}`, "system");
     if (missionContext) addLog(`Mission Continuity: Active for ${missionContext}`, "info");
+    if (platformContext) addLog(`Shared Platform: ${platformContext} Infrastructure Linked`, "success");
     
     if (needsRotation) {
       await runGeoIdSync(true);
@@ -175,7 +176,8 @@ export default function FleetNexusPage() {
     try {
       const result = await generateAutomationFromPrompt({ 
         prompt, 
-        missionContext 
+        missionContext,
+        platformContext
       });
       
       const now = Date.now();
@@ -200,7 +202,8 @@ export default function FleetNexusPage() {
         updatedAt: now,
         manualMode,
         identityMode: needsRotation ? 'rotational' : 'persistent',
-        missionContext
+        missionContext,
+        platformContext
       };
 
       setActiveTask(newTask);
@@ -231,7 +234,8 @@ export default function FleetNexusPage() {
         goal: activeTask.prompt,
         memory: activeTask.memory,
         surveyContent: currentDom,
-        missionContext: activeTask.missionContext
+        missionContext: activeTask.missionContext,
+        platformContext: activeTask.platformContext
       });
 
       addLog(`Reasoning: ${reasoningOutput.reasoning}`, "info");
@@ -452,10 +456,19 @@ export default function FleetNexusPage() {
             <div className="flex items-center justify-between px-1">
               <div className="flex flex-col gap-0.5">
                 <h3 className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">Matrix_Queue</h3>
-                {activeTask?.missionContext && (
-                  <span className="text-[7px] font-black text-accent uppercase tracking-widest bg-accent/10 px-1 rounded w-fit">
-                    Context: {activeTask.missionContext} (Continuous)
-                  </span>
+                {(activeTask?.missionContext || activeTask?.platformContext) && (
+                  <div className="flex gap-1">
+                    {activeTask.platformContext && (
+                      <span className="text-[7px] font-black text-primary uppercase tracking-widest bg-primary/10 px-1 rounded w-fit">
+                        {activeTask.platformContext} (Shared)
+                      </span>
+                    )}
+                    {activeTask.missionContext && (
+                      <span className="text-[7px] font-black text-accent uppercase tracking-widest bg-accent/10 px-1 rounded w-fit">
+                        {activeTask.missionContext} (Continuous)
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
               {activeTask && (

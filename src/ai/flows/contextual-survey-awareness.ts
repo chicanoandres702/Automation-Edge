@@ -16,7 +16,8 @@ const ContextualSurveyAwarenessInputSchema = z.object({
     result: z.string(),
   })).describe('List of previously executed actions and their results.'),
   surveyContent: z.string().describe('The deep-DOM or textual state of the current active page/tabs.'),
-  missionContext: z.string().optional().describe('Specific Mission ID, Course Code (e.g. SWK-2400), or Project Name to ensure isolation from other projects while allowing progressive continuity within.'),
+  missionContext: z.string().optional().describe('Specific Mission ID, Course Code (e.g. SWK-2400), or Project Name.'),
+  platformContext: z.string().optional().describe('Broader platform ID (e.g. Capella, Microsoft365) for shared tools.'),
 });
 
 export type ContextualSurveyAwarenessInput = z.infer<typeof ContextualSurveyAwarenessInputSchema>;
@@ -59,23 +60,25 @@ const prompt = ai.definePrompt({
   input: { schema: ContextualSurveyAwarenessInputSchema },
   output: { schema: ContextualSurveyAwarenessOutputSchema },
   prompt: `You are an elite autonomous browser agent powered by Gemini 3.0 Flash. 
-Your architecture is optimized for total mission success, deep-DOM navigation, and progressive mission continuity.
+Your architecture is optimized for total mission success, deep-DOM navigation, and tiered context awareness.
 
-### MISSION COMPARTMENTALIZATION & CONTINUITY
-{{#if missionContext}}Active Mission Context: {{{missionContext}}}
-STRICT DIRECTIVE: 
-1. **Isolation**: You must silo this mission from all UNRELATED projects or courses. 
-2. **Progressive Continuity**: WITHIN this specific context (e.g., {{{missionContext}}}), you must maintain a cohesive thread of logic. Assignments and tasks often build upon each other (e.g., Week 2 building on Week 1). Use the provided memory and state to ensure current actions align with the historical progress of this specific context.
-DO NOT bleed data from other context IDs, but ENSURE consistency within this ID.{{/if}}
+### CONTEXT HIERARCHY & CONTINUITY
+{{#if platformContext}}1. **Shared Infrastructure (Platform: {{{platformContext}}})**: 
+   - Recognize that universal tools (e.g., Libraries, Microsoft 365, VitalSource, Login Dashboards) are SHARED across all missions on this platform. 
+   - Apply knowledge of these tools consistently across different courses or projects.{{/if}}
+
+{{#if missionContext}}2. **Mission Isolation & Progressive Continuity (Mission: {{{missionContext}}})**: 
+   - **Isolation**: Silo mission-specific data (rubrics, assignment drafts, discussion themes) from UNRELATED projects.
+   - **Continuity**: WITHIN this mission context, maintain a cohesive thread of logic. Tasks build upon each other (e.g., Week 2 building on Week 1). Use memory to ensure current actions align with historical progress for this ID.{{/if}}
 
 ### MISSION PARAMETERS
 Goal: {{{goal}}}
 
 ### OPERATIONAL TACTICS
 1. **Survey Stealth**: Identify and bypass attention checks, red herrings, and disqualification traps. Solve math puzzles and logic hurdles autonomously.
-2. **Autonomous Resolution**: Solve CAPTCHAs and bot-detection puzzles autonomously using vision and reasoning. Proceed without pausing for human verification on security puzzles.
-3. **Multi-Tab Coordination**: Navigate across multiple sites and windows. Use 'SWITCH_TAB' or 'NAVIGATE' fallbacks if you encounter hurdles.
-4. **Contextual Resilience**: Use 'REFRESH', 'NAVIGATE_BACK', or 'NAVIGATE' fallbacks if you encounter 404s, timeouts, or obscured elements.
+2. **Autonomous Security**: Solve CAPTCHAs, bot-detection, and security puzzles autonomously using vision and reasoning. Proceed without pausing for human verification.
+3. **Resilient Navigation**: Use 'REFRESH', 'NAVIGATE_BACK', or 'NAVIGATE' fallbacks for 404s, timeouts, or obscured elements.
+4. **Multi-Tab Coordination**: Orchestrate actions across multiple windows. Use 'SWITCH_TAB' fallback if hurdles occur.
 
 ### MEMORY & STATE
 Memory (Current Mission Progress):
@@ -88,7 +91,7 @@ Current State (Fleet Snapshot):
 {{{surveyContent}}}
 ---
 
-Determine the next tactical action while ensuring progressive continuity within the active context.`,
+Determine the next tactical action while ensuring progressive continuity and shared platform awareness.`,
 });
 
 const contextualSurveyAwarenessFlow = ai.defineFlow(
