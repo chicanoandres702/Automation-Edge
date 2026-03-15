@@ -16,7 +16,10 @@ import {
   GripVertical,
   Eye,
   ArrowRight,
-  RotateCcw
+  RotateCcw,
+  MessageSquare,
+  XCircle,
+  Undo2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -40,6 +43,10 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
       case 'navigate': return <Navigation className="w-3 h-3" />;
       case 'wait': return <RefreshCw className="w-3 h-3" />;
       case 'extract': return <Search className="w-3 h-3" />;
+      case 'ask-user': return <MessageSquare className="w-3 h-3" />;
+      case 'close-tab': return <XCircle className="w-3 h-3" />;
+      case 'refresh': return <RotateCcw className="w-3 h-3" />;
+      case 'navigate-back': return <Undo2 className="w-3 h-3" />;
       default: return <Circle className="w-3 h-3" />;
     }
   };
@@ -86,7 +93,7 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
                   const isCompleted = index < currentStepIndex || (index === currentStepIndex && status === 'completed');
                   const isPending = index > currentStepIndex;
                   const isRetrying = isCurrent && status === 'retrying';
-                  const needsReview = step.status === 'needs_review' || (isActive && status === 'intervention_required');
+                  const needsReview = step.status === 'needs_review' || (isActive && status === 'intervention_required') || step.type === 'ask-user';
 
                   return (
                     <Draggable key={step.id} draggableId={step.id} index={index}>
@@ -137,14 +144,14 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
                               {step.description}
                             </p>
                             
-                            {needsReview && onIntervene && (
+                            {needsReview && isCurrent && onIntervene && (
                                <Button 
                                  variant="ghost" 
                                  size="sm" 
                                  className="h-6 mt-1 w-full text-[7px] font-black uppercase bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 rounded-lg"
                                  onClick={() => onIntervene(index)}
                                >
-                                 Intervene
+                                 Respond to Agent
                                </Button>
                             )}
                           </div>
@@ -154,7 +161,7 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
                               "w-4 h-4 rounded-full flex items-center justify-center",
                               isActive ? "text-primary" : isCompleted ? "text-accent/40" : "text-muted-foreground/20"
                             )}>
-                              {needsReview ? (
+                              {needsReview && isCurrent ? (
                                 <AlertCircle className="w-3 h-3 text-destructive animate-bounce" />
                               ) : isRetrying ? (
                                 <RotateCcw className="w-3 h-3 text-accent animate-spin" />

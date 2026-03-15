@@ -23,7 +23,7 @@ import {
   RotateCcw,
   Sparkles
 } from "lucide-react";
-import { AutomationTask, AutomationStep, ActionType, AutomationStatus } from "@/lib/types";
+import { AutomationTask, AutomationStep, ActionType, AutomationStatus, ExecutionMemory } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
 import { contextualSurveyAwareness } from "@/ai/flows/contextual-survey-awareness";
 import { useToast } from "@/hooks/use-toast";
@@ -126,15 +126,20 @@ export default function FleetNexusPage() {
     runFleetSync(true);
   }, [addLog, runFleetSync]);
 
-  const mapActionType = (desc: string): ActionType => {
-    const d = desc.toLowerCase();
-    if (d.includes('type') || d.includes('fill')) return 'type';
-    if (d.includes('click') || d.includes('press')) return 'click';
-    if (d.includes('scroll')) return 'scroll';
-    if (d.includes('navigate') || d.includes('go to')) return 'navigate';
-    if (d.includes('switch') || d.includes('tab')) return 'switch-tab';
-    if (d.includes('touch')) return 'touch';
-    return 'extract';
+  const mapActionType = (action: string): ActionType => {
+    switch (action.toUpperCase()) {
+      case 'CLICK': return 'click';
+      case 'TYPE': return 'type';
+      case 'SCROLL': return 'scroll';
+      case 'WAIT': return 'wait';
+      case 'SWITCH_TAB': return 'switch-tab';
+      case 'CLOSE_TAB': return 'close-tab';
+      case 'ASK_USER': return 'ask-user';
+      case 'NAVIGATE': return 'navigate';
+      case 'REFRESH': return 'refresh';
+      case 'NAVIGATE_BACK': return 'navigate-back';
+      default: return 'extract';
+    }
   };
 
   const handleStartAutomation = async () => {
@@ -154,7 +159,7 @@ export default function FleetNexusPage() {
     }
 
     await runFleetSync(true);
-    addLog(`Synthesizing Plan (Gemini 3.0)...`, "info");
+    addLog(`Synthesizing Initial Mission (Gemini 3.0)...`, "info");
     
     try {
       const result = await generateAutomationFromPrompt(prompt);
@@ -163,7 +168,7 @@ export default function FleetNexusPage() {
       const newSteps: AutomationStep[] = result.workflowSteps.map((s, idx) => ({
         id: `step-${now}-${idx}`,
         description: s,
-        type: mapActionType(s),
+        type: 'wait', // Initially wait for evaluation
         status: 'pending',
         retryCount: 0,
         maxRetries: 3
@@ -176,6 +181,7 @@ export default function FleetNexusPage() {
         steps: newSteps,
         currentStepIndex: 0,
         observedTabs: [],
+        memory: [],
         createdAt: now,
         updatedAt: now,
         manualMode,
@@ -201,69 +207,74 @@ export default function FleetNexusPage() {
     if (!currentStep) return;
 
     setIsReconsidering(true);
-    addLog(isRetry ? `Retrying Step [${currentIndex + 1}]...` : "Contextual Re-evaluation...", "system");
+    addLog(isRetry ? `Retrying Operation [${currentIndex + 1}]...` : "Neural Context Evaluation...", "system");
     
     const currentDom = await runFleetSync(true);
     
     try {
-      const analysis = await contextualSurveyAwareness({
-        surveyContent: currentDom,
-        taskDescription: activeTask.prompt
+      const reasoningOutput = await contextualSurveyAwareness({
+        goal: activeTask.prompt,
+        memory: activeTask.memory,
+        surveyContent: currentDom
       });
 
-      if (analysis.nextAction === 'FLAG_FOR_REVIEW' || analysis.confidenceScore < 0.4) {
-        if (currentStep.retryCount < currentStep.maxRetries) {
-          addLog(`Confidence Low (${Math.round(analysis.confidenceScore * 100)}%). Scheduling Retry.`, "warn");
-          
-          setActiveTask(prev => {
-            if (!prev) return null;
-            const updatedSteps = [...prev.steps];
-            updatedSteps[currentIndex] = {
-              ...currentStep,
-              status: 'retrying',
-              retryCount: currentStep.retryCount + 1,
-            };
-            return { ...prev, steps: updatedSteps, status: 'retrying' as AutomationStatus };
-          });
+      addLog(`Reasoning: ${reasoningOutput.reasoning}`, "info");
 
-          await new Promise(r => setTimeout(r, 2000));
-          return executeNextStep(true);
-        } else {
-          addLog("Intervention Required: Context Ambiguity.", "warn");
-          setInterventionQuery(analysis.reasoning);
-          setIsInterventionOpen(true);
-          setActiveTask(prev => prev ? { ...prev, status: 'intervention_required' } : null);
-          setIsReconsidering(false);
-          return;
-        }
+      if (reasoningOutput.action === 'ASK_USER') {
+        addLog("Neural Link Requested: Human Intervention required.", "warn");
+        setInterventionQuery(reasoningOutput.parameters.question || "Ambiguous state detected.");
+        setIsInterventionOpen(true);
+        setActiveTask(prev => prev ? { ...prev, status: 'intervention_required' } : null);
+        setIsReconsidering(false);
+        return;
       }
+
+      // Record Memory
+      const stepMemory: ExecutionMemory = {
+        step: `${reasoningOutput.action} ${reasoningOutput.parameters.selector || reasoningOutput.parameters.tab_id || ''}`,
+        result: 'Success'
+      };
 
       setActiveTask(prev => {
         if (!prev) return null;
         
         const isLastStep = prev.currentStepIndex >= prev.steps.length - 1;
         const updatedSteps = [...prev.steps];
-        updatedSteps[currentIndex] = { ...currentStep, status: 'completed' };
+        
+        // Update current step with AI's decided action
+        updatedSteps[currentIndex] = { 
+          ...currentStep, 
+          status: 'completed',
+          type: mapActionType(reasoningOutput.action),
+          description: `Executed ${reasoningOutput.action}: ${reasoningOutput.parameters.selector || ''}`
+        };
 
         if (isLastStep && prev.status === 'running') {
           addLog("Objective Finalized.", "success");
-          return { ...prev, steps: updatedSteps, status: 'completed' as const, updatedAt: Date.now() };
+          return { 
+            ...prev, 
+            steps: updatedSteps, 
+            status: 'completed' as const, 
+            memory: [...prev.memory, stepMemory],
+            updatedAt: Date.now() 
+          };
         }
 
         const nextIndex = prev.currentStepIndex + 1;
-        addLog(`Executed: ${currentStep.description}`, "success");
+        addLog(`Protocol Executed: ${reasoningOutput.action}`, "success");
         
         return { 
           ...prev, 
           steps: updatedSteps,
           currentStepIndex: nextIndex, 
+          memory: [...prev.memory, stepMemory],
           status: prev.manualMode ? 'paused' : 'running',
           updatedAt: Date.now() 
         };
       });
     } catch (err) {
       if (currentStep.retryCount < currentStep.maxRetries) {
-        addLog(`Logic Fault. Retrying...`, "warn");
+        addLog(`System Fault. Retrying Logic...`, "warn");
         setActiveTask(prev => {
           if (!prev) return null;
           const updatedSteps = [...prev.steps];
@@ -291,10 +302,19 @@ export default function FleetNexusPage() {
   }, [activeTask?.currentStepIndex, activeTask?.status, activeTask?.manualMode, executeNextStep, isReconsidering]);
 
   const handleInterventionSubmit = () => {
-    addLog(`Operator Input: ${interventionResponse}`, "success");
+    addLog(`Operator Injection: ${interventionResponse}`, "success");
     setIsInterventionOpen(false);
     if (activeTask) {
-      setActiveTask({ ...activeTask, status: 'running' });
+      // Add intervention to memory
+      const interventionMemory: ExecutionMemory = {
+        step: 'Human Intervention',
+        result: interventionResponse
+      };
+      setActiveTask({ 
+        ...activeTask, 
+        status: 'running', 
+        memory: [...activeTask.memory, interventionMemory] 
+      });
     }
     setInterventionResponse("");
   };
@@ -310,18 +330,18 @@ export default function FleetNexusPage() {
         onStart={() => {
           if (activeTask) {
              setActiveTask({...activeTask, status: 'running'});
-             addLog("Resuming...", "info");
+             addLog("Mission Resumed.", "info");
           }
         }}
         onPause={() => {
           if (activeTask) {
             setActiveTask({...activeTask, status: 'paused'});
-            addLog("Paused.", "warn");
+            addLog("Mission Halted.", "warn");
           }
         }}
         onStop={() => {
           setActiveTask(null);
-          addLog("Purged.", "warn");
+          addLog("Session Purged.", "warn");
         }}
         onStep={() => executeNextStep()}
         manualMode={manualMode}
@@ -330,7 +350,7 @@ export default function FleetNexusPage() {
           if (activeTask) {
             setActiveTask(prev => prev ? { ...prev, manualMode: val } : null);
           }
-          addLog(`Protocol: ${val ? 'Manual' : 'Auto'}`, "system");
+          addLog(`Protocol Shift: ${val ? 'Manual Override' : 'Autonomous'}`, "system");
         }}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
@@ -482,6 +502,7 @@ export default function FleetNexusPage() {
                 className="bg-white/5 border-none h-12 text-[11px]" 
                 value={interventionResponse}
                 onChange={(e) => setInterventionResponse(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleInterventionSubmit()}
               />
               <DialogFooter className="mt-6">
                 <Button variant="outline" className="rounded-xl text-[10px] font-black uppercase" onClick={() => setIsInterventionOpen(false)}>Ignore</Button>
