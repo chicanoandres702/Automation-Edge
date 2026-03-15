@@ -2,7 +2,7 @@
 'use server';
 /**
  * @fileOverview This flow interprets natural language prompts and generates mission plans.
- * Now specifically looks for tool classification cues.
+ * Specifically handles universal tool classification for persistent shared knowledge.
  */
 
 import {ai} from '@/ai/genkit';
@@ -25,7 +25,7 @@ const GenerateAutomationFromPromptOutputSchema = z.object({
     hostname: z.string(),
     type: z.enum(['shared_tool', 'mission_specific']),
     reason: z.string()
-  })).describe('Classification of any mentioned websites.'),
+  })).describe('Classification of any mentioned websites for context isolation.'),
 });
 
 export type GenerateAutomationFromPromptOutput = z.infer<typeof GenerateAutomationFromPromptOutputSchema>;
@@ -36,22 +36,23 @@ const automationPrompt = ai.definePrompt({
   output: { schema: GenerateAutomationFromPromptOutputSchema },
   prompt: `You are an elite AI Browser Agent. 
 
-### PERSISTENCE & CLASSIFICATION
-1. **Shared Platform Detection**: Identify if any website involved is a universal tool (e.g., Google Docs, Office 365, Library). 
-   - If a site is a tool, it should be marked as 'shared_tool'.
-   - If it is specific to a project/course, mark as 'mission_specific'.
-2. **Progressive Continuity**: If a mission ID is provided (e.g., {{{missionId}}}), assume logic from previous weeks in this context is foundational.
+### CONTEXT PERSISTENCE & CLASSIFICATION
+1. **Tool vs. Mission**: Identify if any website involved is a "Shared Tool" (e.g., Google Docs, Microsoft 365, VitalSource) vs a "Mission Specific" project site (e.g., Capella Course Page, Course SWK-2400).
+   - If a site is a universal platform tool, mark it as 'shared_tool'.
+   - If a site is specific to a course or temporary project, mark it as 'mission_specific'.
+2. **Progressive Continuity**: If a mission ID is detected (like a course code SWK-2400), assume tasks building upon each other.
+3. **Tool Hostname Detection**: For shared tools, provide the root hostname (e.g. docs.google.com).
 
 User Objective: {{{prompt}}}
 
 {{#if sharedToolHostnames}}
-Existing Shared Tools:
+Existing Classified Shared Tools:
 {{#each sharedToolHostnames}}
 - {{{this}}}
 {{/each}}
 {{/if}}
 
-Generate the mission plan and classify the involved platforms.`,
+Generate the tactical workflow steps and accurately classify any platforms involved for proper context siloing.`,
 });
 
 export async function generateAutomationFromPrompt(input: GenerateAutomationFromPromptInput): Promise<GenerateAutomationFromPromptOutput> {
