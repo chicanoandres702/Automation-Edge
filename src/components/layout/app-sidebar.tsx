@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/sidebar";
 import { AgentControlPanel } from "@/components/automation/control-panel";
 import { AutomationTask } from "@/lib/types";
-import { Cpu, LogOut, User, ShieldCheck, Settings, MousePointer2, Activity, Globe, Database } from "lucide-react";
+import { Cpu, LogOut, User, ShieldCheck, Settings, MousePointer2, Activity, Globe, Database, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,7 @@ interface AppSidebarProps {
   onStep: () => void;
   manualMode: boolean;
   onToggleManual: (val: boolean) => void;
+  onOpenSettings?: () => void;
 }
 
 export function AppSidebar({ 
@@ -31,7 +32,8 @@ export function AppSidebar({
   onStop, 
   onStep,
   manualMode,
-  onToggleManual
+  onToggleManual,
+  onOpenSettings
 }: AppSidebarProps) {
   return (
     <Sidebar variant="inset" side="left" className="border-r border-white/5 bg-sidebar overflow-hidden">
@@ -46,7 +48,12 @@ export function AppSidebar({
               <p className="text-[8px] tracking-[0.5em] text-primary font-black uppercase mt-1">FLEET_OS_4.2</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/30 hover:text-primary transition-colors">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-muted-foreground/30 hover:text-primary transition-colors"
+            onClick={onOpenSettings}
+          >
             <Settings className="w-4 h-4" />
           </Button>
         </div>
@@ -66,7 +73,6 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent className="px-6 py-4 flex flex-col gap-6 overflow-hidden">
-        {/* Fleet Summary Mini-View */}
         <div className="space-y-4">
           <h3 className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-[0.4em] px-1">Fleet_Node_Health</h3>
           <div className="grid gap-2">

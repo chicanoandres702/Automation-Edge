@@ -17,12 +17,11 @@ import {
   Activity,
   ChevronDown,
   Cpu,
-  Orbit,
-  Globe,
-  Database,
+  Settings as SettingsIcon,
+  MessageSquare,
   Lock,
-  Box,
-  RotateCcw
+  RotateCcw,
+  Sparkles
 } from "lucide-react";
 import { AutomationTask, AutomationStep, ActionType, AutomationStatus } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
@@ -35,8 +34,21 @@ import { Separator } from "@/components/ui/separator";
 import { AgentVisualizer } from "@/components/automation/visualizer";
 import { captureGlobalContext } from "@/lib/dom-traversal";
 import { cn } from "@/lib/utils";
-
-const MAX_GLOBAL_RETRIES = 3;
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 export default function FleetNexusPage() {
   const [mounted, setMounted] = useState(false);
@@ -54,8 +66,15 @@ export default function FleetNexusPage() {
     mode: 'persistent' as 'persistent' | 'rotational'
   });
   const [manualMode, setManualMode] = useState(false);
-  const { toast } = useToast();
   
+  // Modal States
+  const [isInterventionOpen, setIsInterventionOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isIdentityOpen, setIsIdentityOpen] = useState(false);
+  const [interventionQuery, setInterventionQuery] = useState("");
+  const [interventionResponse, setInterventionResponse] = useState("");
+
+  const { toast } = useToast();
   const executionTimer = useRef<NodeJS.Timeout | null>(null);
 
   const addLog = useCallback((msg: string, type: 'info' | 'warn' | 'success' | 'system' = 'info') => {
@@ -122,7 +141,6 @@ export default function FleetNexusPage() {
     if (!prompt.trim()) return;
 
     setIsGenerating(true);
-    
     const rotationKeywords = ['survey', 'multi', 'account', 'signup', 'register', 'rewards', 'poll', 'vote'];
     const needsRotation = rotationKeywords.some(kw => prompt.toLowerCase().includes(kw));
 
@@ -193,7 +211,6 @@ export default function FleetNexusPage() {
         taskDescription: activeTask.prompt
       });
 
-      // Handle failure or low confidence
       if (analysis.nextAction === 'FLAG_FOR_REVIEW' || analysis.confidenceScore < 0.4) {
         if (currentStep.retryCount < currentStep.maxRetries) {
           addLog(`Confidence Low (${Math.round(analysis.confidenceScore * 100)}%). Scheduling Retry.`, "warn");
@@ -205,23 +222,22 @@ export default function FleetNexusPage() {
               ...currentStep,
               status: 'retrying',
               retryCount: currentStep.retryCount + 1,
-              lastError: 'Low confidence analysis'
             };
             return { ...prev, steps: updatedSteps, status: 'retrying' as AutomationStatus };
           });
 
-          // Wait before retry
           await new Promise(r => setTimeout(r, 2000));
           return executeNextStep(true);
         } else {
-          addLog("Max retries reached. AI Intervention required.", "warn");
+          addLog("Intervention Required: Context Ambiguity.", "warn");
+          setInterventionQuery(analysis.reasoning);
+          setIsInterventionOpen(true);
           setActiveTask(prev => prev ? { ...prev, status: 'intervention_required' } : null);
           setIsReconsidering(false);
           return;
         }
       }
 
-      // Successful analysis and execution
       setActiveTask(prev => {
         if (!prev) return null;
         
@@ -231,19 +247,11 @@ export default function FleetNexusPage() {
 
         if (isLastStep && prev.status === 'running') {
           addLog("Objective Finalized.", "success");
-          return { 
-            ...prev, 
-            steps: updatedSteps,
-            status: 'completed' as const, 
-            updatedAt: Date.now() 
-          };
+          return { ...prev, steps: updatedSteps, status: 'completed' as const, updatedAt: Date.now() };
         }
 
         const nextIndex = prev.currentStepIndex + 1;
-        const nextStepDescription = prev.steps[nextIndex]?.description || "Next Operation";
-
         addLog(`Executed: ${currentStep.description}`, "success");
-        addLog(`Preparing: ${nextStepDescription}`, "info");
         
         return { 
           ...prev, 
@@ -255,24 +263,16 @@ export default function FleetNexusPage() {
       });
     } catch (err) {
       if (currentStep.retryCount < currentStep.maxRetries) {
-        addLog(`Logic Fault. Retrying (${currentStep.retryCount + 1}/${currentStep.maxRetries})...`, "warn");
-        
+        addLog(`Logic Fault. Retrying...`, "warn");
         setActiveTask(prev => {
           if (!prev) return null;
           const updatedSteps = [...prev.steps];
-          updatedSteps[currentIndex] = {
-            ...currentStep,
-            status: 'retrying',
-            retryCount: currentStep.retryCount + 1
-          };
+          updatedSteps[currentIndex] = { ...currentStep, status: 'retrying', retryCount: currentStep.retryCount + 1 };
           return { ...prev, steps: updatedSteps, status: 'retrying' as AutomationStatus };
         });
-
         await new Promise(r => setTimeout(r, 2000));
         return executeNextStep(true);
       }
-
-      addLog("Critical Fault: Sequence halted.", "warn");
       setActiveTask(prev => prev ? { ...prev, status: 'error' } : null);
     } finally {
       setIsReconsidering(false);
@@ -290,19 +290,13 @@ export default function FleetNexusPage() {
     }
   }, [activeTask?.currentStepIndex, activeTask?.status, activeTask?.manualMode, executeNextStep, isReconsidering]);
 
-  const handleManualIntervention = (index: number) => {
-    addLog(`Manual Override Step ${index + 1}.`, "system");
-    setActiveTask(prev => {
-      if (!prev) return null;
-      const updatedSteps = [...prev.steps];
-      updatedSteps[index].status = 'completed';
-      return { ...prev, steps: updatedSteps, status: 'paused' };
-    });
-  };
-
-  const handleReorderSteps = (newSteps: AutomationStep[]) => {
-    setActiveTask(prev => prev ? { ...prev, steps: newSteps, updatedAt: Date.now() } : null);
-    addLog("Matrix reordered.", "system");
+  const handleInterventionSubmit = () => {
+    addLog(`Operator Input: ${interventionResponse}`, "success");
+    setIsInterventionOpen(false);
+    if (activeTask) {
+      setActiveTask({ ...activeTask, status: 'running' });
+    }
+    setInterventionResponse("");
   };
 
   if (!mounted) return null;
@@ -338,25 +332,27 @@ export default function FleetNexusPage() {
           }
           addLog(`Protocol: ${val ? 'Manual' : 'Auto'}`, "system");
         }}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
       
       <SidebarInset className="bg-[#050505] max-w-full overflow-hidden flex flex-col h-screen scanline relative">
         <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 bg-black/40 px-4 backdrop-blur-2xl z-20">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="h-8 w-8 text-primary hover:bg-primary/20 rounded-lg transition-all" />
-            <h2 className="text-[10px] font-black tracking-[0.4em] uppercase text-primary text-glow-primary truncate max-w-[120px]">
-              Nexus_v4.2
-            </h2>
+            <h2 className="text-[10px] font-black tracking-[0.4em] uppercase text-primary text-glow-primary">Nexus_v4.2</h2>
           </div>
           <div className="flex items-center gap-2">
              {activeTask?.status === 'intervention_required' && (
-               <AlertTriangle className="w-4 h-4 text-destructive animate-pulse" />
+               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive animate-pulse" onClick={() => setIsInterventionOpen(true)}>
+                 <AlertTriangle className="w-4 h-4" />
+               </Button>
              )}
-             <ShieldCheck className="w-4 h-4 text-primary" />
+             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/40 hover:text-primary" onClick={() => setIsSettingsOpen(true)}>
+                <SettingsIcon className="w-4 h-4" />
+             </Button>
           </div>
         </header>
 
-        {/* Compressed Status Bar */}
         <div className="px-4 py-2 border-b border-white/5 bg-black/60 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div className={cn(
@@ -365,43 +361,46 @@ export default function FleetNexusPage() {
                 ? "bg-accent animate-pulse shadow-[0_0_8px_hsl(var(--accent))]" 
                 : "bg-muted-foreground/40"
             )} />
-            <span className="text-[10px] font-black uppercase tracking-widest text-accent">
-              {currentStatus}
-            </span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-accent">{currentStatus}</span>
           </div>
-          
           <div className="flex items-center gap-3">
             <Activity className="w-3 h-3 text-primary/50" />
-            <span className="text-[9px] font-mono text-muted-foreground/70 uppercase">0.4ms</span>
+            <span className="text-[9px] font-mono text-muted-foreground/70">SYNCED</span>
           </div>
         </div>
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col p-4 space-y-4 z-10 relative">
-          {/* Quick Stats Grid - Compact */}
+        <main className="flex-1 overflow-y-auto p-4 space-y-4 z-10 relative">
+          {/* Action Grid */}
           <div className="grid grid-cols-2 gap-2">
-            <Card className="p-3 border-white/5 bg-white/[0.03] rounded-xl flex items-center gap-2">
-              <Wifi className={cn("w-3 h-3 text-primary", isSyncing && "animate-pulse")} />
+            <Card className="p-3 border-white/5 bg-white/[0.03] rounded-xl flex items-center gap-2 cursor-pointer hover:bg-white/[0.06] transition-all" onClick={() => runFleetSync()}>
+              <Wifi className={cn("w-3 h-3 text-primary", isSyncing && "animate-spin")} />
               <div className="flex flex-col">
-                <span className="text-[7px] font-black text-muted-foreground uppercase">Fleet</span>
-                <span className="text-[9px] font-bold text-primary">SYNC_OK</span>
+                <span className="text-[7px] font-black text-muted-foreground uppercase tracking-widest">Fleet</span>
+                <span className="text-[9px] font-bold text-primary">SCAN_SYNC</span>
               </div>
             </Card>
 
-            <Card className="p-3 border-white/5 bg-white/[0.03] rounded-xl flex items-center gap-2">
+            <Card className="p-3 border-white/5 bg-white/[0.03] rounded-xl flex items-center gap-2 cursor-pointer hover:bg-white/[0.06] transition-all" onClick={() => setIsIdentityOpen(true)}>
               <Fingerprint className={cn("w-3 h-3", geoStatus.mode === 'rotational' ? "text-accent" : "text-primary")} />
               <div className="flex flex-col">
-                <span className="text-[7px] font-black text-muted-foreground uppercase">Geo</span>
-                <span className="text-[9px] font-mono text-foreground/90 truncate max-w-[60px]">{geoStatus.ip}</span>
+                <span className="text-[7px] font-black text-muted-foreground uppercase tracking-widest">Identity</span>
+                <span className="text-[9px] font-mono text-foreground/90">{geoStatus.ip}</span>
               </div>
             </Card>
           </div>
 
           {/* Mission Inject Area */}
           <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/30 to-accent/30 rounded-xl blur opacity-20 group-focus-within:opacity-50" />
+            {!activeTask && (
+              <div className="absolute -top-6 left-1 flex items-center gap-2 text-[8px] font-black text-primary/40 uppercase tracking-[0.2em] animate-pulse">
+                <Sparkles className="w-2.5 h-2.5" />
+                Awaiting Mission Parameters...
+              </div>
+            )}
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/30 to-accent/30 rounded-xl blur opacity-20 group-focus-within:opacity-50 transition-opacity" />
             <div className="relative bg-black/60 border border-white/10 p-2 rounded-xl flex gap-2">
               <Input 
-                placeholder="Mission parameters..."
+                placeholder={activeTask ? "Update objectives..." : "Inject mission parameters..."}
                 className="bg-white/[0.03] border-none text-[10px] h-9 px-3 placeholder:text-muted-foreground/20 font-medium rounded-lg flex-1"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
@@ -418,52 +417,144 @@ export default function FleetNexusPage() {
             </div>
           </div>
 
-          {/* Progress / Task Queue - Mobile Friendly */}
+          {/* Task Matrix Area */}
           <div className="flex flex-col min-h-0 space-y-4 pb-20">
             <div className="flex items-center justify-between px-1">
               <h3 className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">Matrix_Queue</h3>
               {activeTask && (
                 <div className="flex items-center gap-2">
-                  {activeTask.status === 'retrying' && (
-                    <RotateCcw className="w-3 h-3 text-accent animate-spin" />
-                  )}
+                  {activeTask.status === 'retrying' && <RotateCcw className="w-3 h-3 text-accent animate-spin" />}
                   <span className="text-[8px] font-mono text-muted-foreground/40">{activeTask.currentStepIndex + 1}/{activeTask.steps.length} OPS</span>
                 </div>
               )}
             </div>
             
-            <div className="min-h-[300px] max-h-[500px] w-full">
+            <div className="min-h-[250px] w-full">
               <AgentVisualizer 
                 steps={activeTask?.steps || []} 
                 currentStepIndex={activeTask?.currentStepIndex || 0}
                 status={activeTask?.status || 'idle'}
-                onIntervene={handleManualIntervention}
-                onReorder={handleReorderSteps}
+                onIntervene={() => setIsInterventionOpen(true)}
               />
             </div>
 
-            {/* Compact Insight Card */}
-            <Card className="bg-black/40 border-white/5 p-4 rounded-2xl relative overflow-hidden">
-               <div className="flex items-center gap-2 mb-3">
-                  <BrainCircuit className="w-4 h-4 text-primary" />
-                  <span className="text-[8px] font-black text-primary uppercase tracking-[0.3em]">AI_Reasoning</span>
+            {/* Agent Insights Card */}
+            <Card className="bg-black/40 border-white/5 p-4 rounded-2xl relative overflow-hidden group">
+               <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-30 transition-opacity">
+                  <BrainCircuit className="w-12 h-12 text-primary" />
                </div>
-               <p className="text-[10px] font-bold text-foreground/70 leading-relaxed font-body">
-                {logs[logs.length - 1]?.msg || "Awaiting mission parameters..."}
+               <div className="flex items-center gap-2 mb-3">
+                  <Activity className="w-3.5 h-3.5 text-accent animate-pulse" />
+                  <span className="text-[8px] font-black text-accent uppercase tracking-[0.3em]">AI_Core_Stream</span>
+               </div>
+               <p className="text-[10px] font-bold text-foreground/80 leading-relaxed font-body min-h-[40px]">
+                {logs[logs.length - 1]?.msg || "System standby. Waiting for operator mission injection."}
                </p>
                
                <Button 
                   variant="ghost" 
                   onClick={() => setShowTerminal(true)}
-                  className="w-full h-8 mt-4 rounded-lg bg-white/[0.03] text-[8px] font-black uppercase tracking-widest text-muted-foreground/60 border border-white/5"
+                  className="w-full h-8 mt-4 rounded-lg bg-white/[0.03] text-[8px] font-black uppercase tracking-widest text-muted-foreground/60 border border-white/5 hover:bg-white/10"
                 >
                   <TerminalIcon className="w-3 h-3 mr-2" />
-                  Logs
+                  Kernel Logs
                 </Button>
             </Card>
           </div>
 
-          {/* Terminal Drawer - Animated */}
+          {/* Intervention Dialog */}
+          <Dialog open={isInterventionOpen} onOpenChange={setIsInterventionOpen}>
+            <DialogContent className="bg-background border-destructive/20 max-w-[90vw] rounded-3xl p-6">
+              <DialogHeader>
+                <DialogTitle className="text-destructive flex items-center gap-2 uppercase text-[12px] font-black tracking-widest">
+                  <AlertTriangle className="w-5 h-5" />
+                  Contextual Intervention
+                </DialogTitle>
+                <DialogDescription className="text-[10px] text-muted-foreground/80 leading-relaxed mt-2">
+                  The AI Agent has encountered a branching logic point that requires human verification.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/5 my-4">
+                <p className="text-[11px] font-bold italic opacity-70">"{interventionQuery}"</p>
+              </div>
+              <Input 
+                placeholder="Direct the agent..." 
+                className="bg-white/5 border-none h-12 text-[11px]" 
+                value={interventionResponse}
+                onChange={(e) => setInterventionResponse(e.target.value)}
+              />
+              <DialogFooter className="mt-6">
+                <Button variant="outline" className="rounded-xl text-[10px] font-black uppercase" onClick={() => setIsInterventionOpen(false)}>Ignore</Button>
+                <Button className="bg-primary text-primary-foreground rounded-xl text-[10px] font-black uppercase" onClick={handleInterventionSubmit}>Continue Mission</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Identity Matrix Modal */}
+          <Dialog open={isIdentityOpen} onOpenChange={setIsIdentityOpen}>
+            <DialogContent className="bg-background border-white/10 max-w-[90vw] rounded-3xl p-6">
+              <DialogHeader>
+                <DialogTitle className="text-primary flex items-center gap-2 uppercase text-[12px] font-black tracking-widest">
+                  <Fingerprint className="w-5 h-5" />
+                  Identity Matrix
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 my-6">
+                <div className="p-4 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-[8px] font-black text-muted-foreground uppercase">Current IP</span>
+                    <span className="text-[11px] font-mono text-primary">{geoStatus.ip}</span>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => runGeoIdSync(true)}>
+                    <RotateCcw className="w-4 h-4 text-accent" />
+                  </Button>
+                </div>
+                <div className="p-4 bg-white/5 border border-white/5 rounded-2xl">
+                  <span className="text-[8px] font-black text-muted-foreground uppercase block mb-1">Status</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                    <span className="text-[10px] font-bold uppercase">{geoStatus.mode} Security</span>
+                  </div>
+                </div>
+              </div>
+              <Button className="w-full bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase h-12" onClick={() => setIsIdentityOpen(false)}>Close Interface</Button>
+            </DialogContent>
+          </Dialog>
+
+          {/* Settings Sheet */}
+          <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+            <SheetContent side="right" className="bg-background border-white/10 p-6">
+              <SheetHeader className="mb-8">
+                <SheetTitle className="text-primary text-[14px] font-black uppercase tracking-widest flex items-center gap-3">
+                  <SettingsIcon className="w-5 h-5" />
+                  System Kernel
+                </SheetTitle>
+                <SheetDescription className="text-[10px] uppercase font-bold tracking-tighter opacity-40">Nexus_v4.2 Configurations</SheetDescription>
+              </SheetHeader>
+              <div className="space-y-6">
+                 <div className="space-y-2">
+                    <label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Reasoning Depth</label>
+                    <div className="grid grid-cols-3 gap-2">
+                       {['Low', 'Mid', 'Max'].map(d => (
+                         <Button key={d} variant="outline" className={cn("h-8 text-[9px] font-black uppercase rounded-lg border-white/5", d === 'Max' && "border-primary text-primary bg-primary/10")}>{d}</Button>
+                       ))}
+                    </div>
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Sync Frequency</label>
+                    <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+                       <span className="text-[10px] font-bold">Aggressive</span>
+                       <div className="w-8 h-4 bg-primary/20 rounded-full border border-primary/40" />
+                    </div>
+                 </div>
+                 <div className="pt-8">
+                    <Button variant="destructive" className="w-full rounded-xl text-[10px] font-black uppercase h-11" onClick={() => setActiveTask(null)}>Purge All State</Button>
+                 </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {/* Terminal Drawer */}
           <div className={cn(
             "fixed inset-0 z-[100] transition-all duration-500 pointer-events-none",
             showTerminal ? "bg-black/80 backdrop-blur-md opacity-100" : "bg-transparent opacity-0"
@@ -473,8 +564,11 @@ export default function FleetNexusPage() {
               showTerminal ? "translate-y-0" : "translate-y-full"
             )}>
               <div className="flex items-center justify-between mb-6">
-                <span className="text-[10px] font-black text-primary uppercase tracking-widest">System_Kernel</span>
-                <Button variant="ghost" size="icon" onClick={() => setShowTerminal(false)}>
+                <div className="flex items-center gap-2">
+                  <TerminalIcon className="w-4 h-4 text-primary" />
+                  <span className="text-[10px] font-black text-primary uppercase tracking-widest">System_Kernel</span>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setShowTerminal(false)} className="rounded-full hover:bg-white/5">
                   <ChevronDown className="w-5 h-5" />
                 </Button>
               </div>
