@@ -1,4 +1,3 @@
-
 "use client";
 
 import { 
@@ -7,13 +6,13 @@ import {
   SidebarFooter, 
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { AgentVisualizer } from "@/components/automation/visualizer";
 import { AgentControlPanel } from "@/components/automation/control-panel";
-import { AutomationTask, AutomationStep } from "@/lib/types";
-import { Cpu, LogOut, User, ShieldCheck, Settings, MousePointer2 } from "lucide-react";
+import { AutomationTask } from "@/lib/types";
+import { Cpu, LogOut, User, ShieldCheck, Settings, MousePointer2, Activity, Globe, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 
 interface AppSidebarProps {
   activeTask: AutomationTask | null;
@@ -21,8 +20,6 @@ interface AppSidebarProps {
   onPause: () => void;
   onStop: () => void;
   onStep: () => void;
-  onIntervene: (index: number) => void;
-  onReorder: (steps: AutomationStep[]) => void;
   manualMode: boolean;
   onToggleManual: (val: boolean) => void;
 }
@@ -33,15 +30,13 @@ export function AppSidebar({
   onPause, 
   onStop, 
   onStep,
-  onIntervene,
-  onReorder,
   manualMode,
   onToggleManual
 }: AppSidebarProps) {
   return (
     <Sidebar variant="inset" side="left" className="border-r border-white/5 bg-sidebar overflow-hidden">
       <SidebarHeader className="p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center neon-glow-primary shadow-lg">
               <Cpu className="text-background w-6 h-6" />
@@ -70,16 +65,36 @@ export function AppSidebar({
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-6 py-2 flex flex-col gap-6 overflow-hidden">
-        <div className="flex-1 min-h-0">
-          <AgentVisualizer 
-            steps={activeTask?.steps || []} 
-            currentStepIndex={activeTask?.currentStepIndex || 0}
-            status={activeTask?.status || 'idle'}
-            onIntervene={onIntervene}
-            onReorder={onReorder}
-          />
+      <SidebarContent className="px-6 py-4 flex flex-col gap-6 overflow-hidden">
+        {/* Fleet Summary Mini-View */}
+        <div className="space-y-4">
+          <h3 className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-[0.4em] px-1">Fleet_Node_Health</h3>
+          <div className="grid gap-2">
+            <div className="p-3 bg-white/[0.03] border border-white/5 rounded-xl flex items-center justify-between group hover:bg-white/[0.05] transition-all">
+              <div className="flex items-center gap-3">
+                <Globe className="w-3.5 h-3.5 text-primary opacity-50" />
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Nodes</span>
+              </div>
+              <span className="text-[10px] font-black text-primary">12 ACTIVE</span>
+            </div>
+            <div className="p-3 bg-white/[0.03] border border-white/5 rounded-xl flex items-center justify-between group hover:bg-white/[0.05] transition-all">
+              <div className="flex items-center gap-3">
+                <Activity className="w-3.5 h-3.5 text-accent opacity-50" />
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Sync</span>
+              </div>
+              <span className="text-[10px] font-black text-accent">99.8%</span>
+            </div>
+            <div className="p-3 bg-white/[0.03] border border-white/5 rounded-xl flex items-center justify-between group hover:bg-white/[0.05] transition-all">
+              <div className="flex items-center gap-3">
+                <Database className="w-3.5 h-3.5 text-muted-foreground opacity-50" />
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Buffer</span>
+              </div>
+              <span className="text-[10px] font-black text-muted-foreground">NOMINAL</span>
+            </div>
+          </div>
         </div>
+
+        <Separator className="bg-white/5" />
 
         <div className="mt-auto pb-4">
           <AgentControlPanel 

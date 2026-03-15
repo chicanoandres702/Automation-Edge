@@ -31,6 +31,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { AgentVisualizer } from "@/components/automation/visualizer";
 import { captureGlobalContext } from "@/lib/dom-traversal";
 import { cn } from "@/lib/utils";
 
@@ -281,8 +282,6 @@ export default function FleetNexusPage() {
           addLog("Mission purged.", "warn");
         }}
         onStep={executeNextStep}
-        onIntervene={handleManualIntervention}
-        onReorder={handleReorderSteps}
         manualMode={manualMode}
         onToggleManual={(val) => {
           setManualMode(val);
@@ -377,7 +376,7 @@ export default function FleetNexusPage() {
         </div>
 
         <main className="flex-1 overflow-hidden flex flex-col p-6 space-y-6 z-10 relative">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             <Card className="p-4 border-white/5 bg-white/[0.03] hover:bg-white/[0.05] transition-all group relative overflow-hidden rounded-2xl shadow-2xl backdrop-blur-md">
               <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent opacity-50" />
               <div className="flex items-center justify-between mb-3">
@@ -388,12 +387,7 @@ export default function FleetNexusPage() {
                 <Database className="w-3.5 h-3.5 text-muted-foreground/20" />
               </div>
               <div className="text-xs font-bold text-foreground/90 truncate uppercase tracking-tight flex items-center gap-2">
-                {isSyncing ? (
-                  <>
-                    <RefreshCw className="w-3 h-3 animate-spin" />
-                    Deep Scanning...
-                  </>
-                ) : "All Tabs Unified"}
+                {isSyncing ? "Scanning..." : "Sync Active"}
               </div>
             </Card>
 
@@ -412,124 +406,123 @@ export default function FleetNexusPage() {
                 {geoStatus.ip}
               </div>
             </Card>
+
+            <div className="col-span-2 relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-primary/30 to-accent/30 rounded-[1.5rem] blur opacity-20 group-focus-within:opacity-50 transition-all duration-500" />
+              <div className="relative bg-black/60 border border-white/10 p-4 rounded-[1.25rem] flex gap-3 shadow-3xl">
+                <Input 
+                  placeholder="Declare high-fidelity mission objective..."
+                  className="bg-white/[0.03] border-white/10 focus-visible:ring-2 focus-visible:ring-primary/40 text-xs h-10 px-5 placeholder:text-muted-foreground/20 font-medium rounded-xl flex-1"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleStartAutomation()}
+                />
+                <Button 
+                  onClick={handleStartAutomation}
+                  disabled={isGenerating || !prompt.trim() || isSyncing}
+                  className="h-10 px-6 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-[0.3em] shadow-[0_0_20px_rgba(0,255,255,0.2)] hover:shadow-[0_0_30px_rgba(0,255,255,0.4)] transition-all group overflow-hidden relative"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-loading" />
+                  {isGenerating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 fill-current" />}
+                </Button>
+              </div>
+            </div>
           </div>
 
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-primary/30 to-accent/30 rounded-[1.5rem] blur opacity-20 group-focus-within:opacity-50 transition-all duration-500" />
-            <div className="relative bg-black/60 border border-white/10 p-6 rounded-[1.25rem] space-y-4 shadow-3xl">
-              <div className="flex items-center gap-3 px-1">
-                <Orbit className="w-4 h-4 text-primary/50 animate-pulse-slow" />
-                <span className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-[0.4em]">Mission_Inject_v3.0</span>
+          <div className="flex-1 flex gap-6 min-h-0">
+            {/* Task Manager (Expanded Room) */}
+            <div className="flex-[2] flex flex-col min-w-0">
+              <div className="mb-4 flex items-center justify-between px-2">
+                <div className="flex items-center gap-3">
+                  <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20">
+                    <Activity className="w-4 h-4 text-primary" />
+                  </div>
+                  <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">Operation_Matrix_Queue</h3>
+                </div>
+                {activeTask && (
+                  <div className="flex items-center gap-4">
+                    <span className="text-[10px] font-mono text-muted-foreground/40">{activeTask.steps.length} Protocol Steps</span>
+                    <Progress value={((activeTask.currentStepIndex + 1) / activeTask.steps.length) * 100} className="w-32 h-1.5 bg-white/5 [&>div]:bg-primary shadow-2xl rounded-full" />
+                  </div>
+                )}
               </div>
-              <Input 
-                placeholder="Declare high-fidelity mission objective..."
-                className="bg-white/[0.03] border-white/10 focus-visible:ring-2 focus-visible:ring-primary/40 text-xs h-12 px-5 placeholder:text-muted-foreground/20 font-medium rounded-xl"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleStartAutomation()}
+              <AgentVisualizer 
+                steps={activeTask?.steps || []} 
+                currentStepIndex={activeTask?.currentStepIndex || 0}
+                status={activeTask?.status || 'idle'}
+                onIntervene={handleManualIntervention}
+                onReorder={handleReorderSteps}
               />
-              <Button 
-                onClick={handleStartAutomation}
-                disabled={isGenerating || !prompt.trim() || isSyncing}
-                className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-[0.3em] shadow-[0_0_20px_rgba(0,255,255,0.2)] hover:shadow-[0_0_30px_rgba(0,255,255,0.4)] transition-all active:scale-[0.97] group overflow-hidden relative"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-loading" />
-                {isGenerating ? (
-                  <RefreshCw className="w-5 h-5 animate-spin mr-3" />
-                ) : (
-                  <Zap className="w-4 h-4 mr-3 fill-current" />
-                )}
-                {isGenerating ? "Synthesizing Strategy..." : "Engage Objective"}
-              </Button>
             </div>
+
+            {/* Agent Insight Card (Secondary Room) */}
+            <Card className="flex-1 flex flex-col min-h-0 bg-black/60 border border-white/10 rounded-[2rem] p-6 font-mono relative shadow-3xl backdrop-blur-2xl group overflow-hidden">
+              <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/10 blur-[100px] rounded-full group-hover:bg-primary/20 transition-all duration-700" />
+              
+              <div className="flex flex-col h-full space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 neon-glow-primary">
+                    <BrainCircuit className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black text-primary uppercase tracking-[0.5em] text-glow-primary">Cognitive_Stream</span>
+                    <span className="text-[10px] font-bold text-foreground/90 mt-0.5 uppercase tracking-tight">V3 Deep Reasoning</span>
+                  </div>
+                </div>
+
+                <div className="flex-1 space-y-6">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Box className="w-3 h-3 text-muted-foreground/40" />
+                      <span className="text-[8px] font-black text-muted-foreground/40 uppercase tracking-[0.3em]">Current_Logic_Node</span>
+                    </div>
+                    <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl shadow-inner min-h-[100px]">
+                      <p className="text-[11px] font-bold leading-relaxed text-foreground/90 animate-in fade-in slide-in-from-bottom-2 duration-700 font-body">
+                        {lastLog?.msg || "Awaiting mission parameters for deep context synthesis..."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <span className="text-[8px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40">System_Integrity</span>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                          <div className="h-full w-full bg-gradient-to-r from-accent/40 to-accent animate-pulse-slow" />
+                        </div>
+                        <span className="text-[9px] font-black text-accent uppercase tracking-widest">Stable</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <span className="text-[8px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40">Context_Latency</span>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                          <div className="h-full w-[25%] bg-gradient-to-r from-primary/40 to-primary" />
+                        </div>
+                        <span className="text-[9px] font-black text-primary uppercase tracking-widest">0.8s</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {isReconsidering && (
+                    <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center gap-3 animate-pulse">
+                      <RefreshCw className="w-3.5 h-3.5 text-primary animate-spin" />
+                      <span className="text-[9px] font-black text-primary uppercase tracking-[0.4em] text-glow-primary">Re-evaluating...</span>
+                    </div>
+                  )}
+                </div>
+
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setShowTerminal(true)}
+                  className="w-full h-10 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/60 border border-white/10 transition-all duration-300"
+                >
+                  <TerminalIcon className="w-3.5 h-3.5 mr-2" />
+                  Kernel Logs
+                </Button>
+              </div>
+            </Card>
           </div>
-
-          {activeTask && (activeTask.status === 'running' || activeTask.status === 'paused' || activeTask.status === 'intervention_required') && (
-            <div className="space-y-3 px-2">
-              <div className="flex justify-between text-[10px] font-black uppercase tracking-[0.2em] text-primary/80">
-                <span className="flex items-center gap-3">
-                   {isReconsidering && <BrainCircuit className="w-4 h-4 text-accent animate-pulse" />}
-                   {isReconsidering ? "AI_RECONSIDERING_PAGE_STATE..." : "Protocol_Evolution_Progress"}
-                </span>
-                <span className="font-mono text-glow-primary">{Math.round(((activeTask.currentStepIndex + 1) / activeTask.steps.length) * 100)}%</span>
-              </div>
-              <div className="relative">
-                <div className="absolute inset-0 blur-sm bg-primary/20 rounded-full" />
-                <Progress value={((activeTask.currentStepIndex + 1) / activeTask.steps.length) * 100} className="h-2 bg-white/5 [&>div]:bg-primary shadow-2xl rounded-full relative overflow-hidden" />
-              </div>
-            </div>
-          )}
-
-          {/* High-Fidelity Agent Insight Card */}
-          <Card className="flex-1 flex flex-col min-h-0 bg-black/60 border border-white/10 rounded-[2rem] p-8 font-mono relative shadow-3xl backdrop-blur-2xl group overflow-hidden">
-            <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/10 blur-[100px] rounded-full group-hover:bg-primary/20 transition-all duration-700" />
-            <div className="absolute top-0 right-0 p-6">
-              <Activity className={cn("w-5 h-5 transition-all duration-500", activeTask?.status === 'running' ? "text-accent animate-pulse drop-shadow-[0_0_8px_hsl(var(--accent))]" : "text-muted-foreground/20")} />
-            </div>
-            
-            <div className="flex flex-col h-full space-y-8">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 neon-glow-primary">
-                  <BrainCircuit className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-primary uppercase tracking-[0.5em] text-glow-primary">Agent_Insight_Nexus</span>
-                  <span className="text-xs font-bold text-foreground/90 mt-1 uppercase tracking-tight">Gemini 3.0 Flash Cognitive Stream</span>
-                </div>
-              </div>
-
-              <div className="flex-1 space-y-6">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Box className="w-3 h-3 text-muted-foreground/40" />
-                    <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-[0.3em]">Current_Operation_Analysis</span>
-                  </div>
-                  <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl shadow-inner min-h-[80px]">
-                    <p className="text-xs font-bold leading-relaxed text-foreground/90 animate-in fade-in slide-in-from-bottom-2 duration-700 font-body">
-                      {lastLog?.msg || "Awaiting mission parameters for deep analysis..."}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <span className="text-[8px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40">System_Integrity</span>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full w-full bg-gradient-to-r from-accent/40 to-accent animate-pulse-slow" />
-                      </div>
-                      <span className="text-[10px] font-black text-accent uppercase tracking-widest">Stable</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <span className="text-[8px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40">Reasoning_Latency</span>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full w-[25%] bg-gradient-to-r from-primary/40 to-primary" />
-                      </div>
-                      <span className="text-[10px] font-black text-primary uppercase tracking-widest">0.8s</span>
-                    </div>
-                  </div>
-                </div>
-
-                {isReconsidering && (
-                  <div className="p-4 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center gap-4 animate-pulse shadow-[0_0_20px_rgba(0,255,255,0.05)]">
-                    <RefreshCw className="w-4 h-4 text-primary animate-spin" />
-                    <span className="text-[10px] font-black text-primary uppercase tracking-[0.4em] text-glow-primary">Re-evaluating Tactical Strategy...</span>
-                  </div>
-                )}
-              </div>
-
-              <Button 
-                variant="ghost" 
-                onClick={() => setShowTerminal(true)}
-                className="w-full h-12 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/60 border border-white/10 hover:border-primary/40 hover:text-primary transition-all duration-300 group"
-              >
-                <TerminalIcon className="w-4 h-4 mr-3 group-hover:animate-pulse" />
-                Open System Kernel Logs
-              </Button>
-            </div>
-          </Card>
 
           {/* Animated System Kernel Drawer */}
           <div className={cn(
