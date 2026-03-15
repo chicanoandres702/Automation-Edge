@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -381,6 +382,7 @@ export default function NexusControlCenter() {
                     steps={activeTask?.steps || []} 
                     currentStepIndex={activeTask?.currentStepIndex || 0}
                     status={activeTask?.status || 'idle'}
+                    onReorder={(newSteps) => setActiveTask(prev => prev ? { ...prev, steps: newSteps } : null)}
                   />
                 </TabsContent>
                 <TabsContent value="history" className="flex-1 min-h-0 mt-0">
