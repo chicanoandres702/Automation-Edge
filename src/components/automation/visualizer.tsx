@@ -14,12 +14,10 @@ import {
   Navigation,
   Search,
   GripVertical,
-  Eye,
-  ArrowRight,
-  RotateCcw,
-  MessageSquare,
   XCircle,
-  Undo2
+  Undo2,
+  MessageSquare,
+  RotateCcw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,17 +35,17 @@ interface VisualizerProps {
 export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, onReorder }: VisualizerProps) {
   const getActionIcon = (type: string) => {
     switch (type) {
-      case 'click': return <MousePointer2 className="w-3 h-3" />;
-      case 'type': return <Keyboard className="w-3 h-3" />;
-      case 'touch': return <Fingerprint className="w-3 h-3" />;
-      case 'navigate': return <Navigation className="w-3 h-3" />;
-      case 'wait': return <RefreshCw className="w-3 h-3" />;
-      case 'extract': return <Search className="w-3 h-3" />;
-      case 'ask-user': return <MessageSquare className="w-3 h-3" />;
-      case 'close-tab': return <XCircle className="w-3 h-3" />;
-      case 'refresh': return <RotateCcw className="w-3 h-3" />;
-      case 'navigate-back': return <Undo2 className="w-3 h-3" />;
-      default: return <Circle className="w-3 h-3" />;
+      case 'click': return <MousePointer2 className="w-3.5 h-3.5" />;
+      case 'type': return <Keyboard className="w-3.5 h-3.5" />;
+      case 'touch': return <Fingerprint className="w-3.5 h-3.5" />;
+      case 'navigate': return <Navigation className="w-3.5 h-3.5" />;
+      case 'wait': return <RefreshCw className="w-3.5 h-3.5" />;
+      case 'extract': return <Search className="w-3.5 h-3.5" />;
+      case 'ask-user': return <MessageSquare className="w-3.5 h-3.5" />;
+      case 'close-tab': return <XCircle className="w-3.5 h-3.5" />;
+      case 'refresh': return <RotateCcw className="w-3.5 h-3.5" />;
+      case 'navigate-back': return <Undo2 className="w-3.5 h-3.5" />;
+      default: return <Circle className="w-3.5 h-3.5" />;
     }
   };
 
@@ -61,24 +59,26 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
 
   if (steps.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-2xl border-white/5 p-4 text-center">
-        <PlayCircle className="w-10 h-10 opacity-5 mb-3" />
-        <p className="font-black uppercase tracking-widest text-[8px] text-primary/40">
-          Standby_Inject_Required
+      <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-xl border-white/5 p-8 text-center bg-white/[0.01]">
+        <div className="w-12 h-12 rounded-full bg-primary/5 flex items-center justify-center mb-4">
+          <PlayCircle className="w-6 h-6 text-primary opacity-20" />
+        </div>
+        <p className="font-black uppercase tracking-[0.2em] text-[10px] text-muted-foreground/40">
+          Standby for mission injection
         </p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-black/20 rounded-2xl border border-white/5 overflow-hidden shadow-xl">
-      <div className="grid grid-cols-[30px_1fr_40px] gap-2 px-3 py-2 bg-white/5 text-[7px] font-black uppercase tracking-widest text-muted-foreground/50">
+    <div className="flex flex-col h-full bg-white/[0.02] rounded-xl border border-white/5 overflow-hidden shadow-2xl">
+      <div className="grid grid-cols-[40px_1fr_60px] gap-2 px-4 py-3 bg-white/[0.03] text-[8px] font-black uppercase tracking-widest text-muted-foreground border-b border-white/5">
         <div className="flex justify-center">#</div>
-        <div>Operation</div>
-        <div className="text-right">STS</div>
+        <div>Tactical Step</div>
+        <div className="text-right">Status</div>
       </div>
       
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 custom-scrollbar">
         <DragDropContext onDragEnd={handleOnDragEnd}>
           <Droppable droppableId="operation-matrix">
             {(provided) => (
@@ -102,43 +102,46 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           className={cn(
-                            "group relative grid grid-cols-[30px_1fr_40px] gap-2 px-3 py-3 items-start transition-all",
-                            isActive ? "bg-primary/5" : "hover:bg-white/[0.01]",
-                            snapshot.isDragging && "bg-white/10 scale-105 z-50",
-                            isPending && "opacity-40"
+                            "group relative grid grid-cols-[40px_1fr_60px] gap-2 px-4 py-4 items-start transition-colors",
+                            isActive ? "bg-primary/5 shadow-inner" : "hover:bg-white/[0.01]",
+                            snapshot.isDragging && "bg-white/10 scale-[1.02] z-50 rounded-lg border-primary/20 shadow-2xl",
+                            isPending && "opacity-30 grayscale-[0.5]"
                           )}
                         >
                           <div 
                             {...provided.dragHandleProps}
-                            className="absolute -left-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 text-primary/20 cursor-grab"
+                            className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-2 text-primary/30 cursor-grab"
                           >
-                            <GripVertical className="w-3 h-3" />
+                            <GripVertical className="w-4 h-4" />
                           </div>
 
                           <div className="flex flex-col items-center">
                             <span className={cn(
-                              "text-[8px] font-mono",
-                              isActive ? "text-primary font-black" : "text-muted-foreground/30"
+                              "text-[10px] font-mono",
+                              isActive ? "text-primary font-black" : "text-muted-foreground/50"
                             )}>
                               {index + 1}
                             </span>
                           </div>
 
-                          <div className="space-y-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5 px-1 py-0.5 rounded border border-white/5 bg-white/5 w-fit">
+                          <div className="space-y-2 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <div className={cn(
+                                "flex items-center gap-1.5 px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-tight",
+                                isActive ? "bg-primary/10 border-primary/20 text-primary" : "bg-white/5 border-white/5 text-muted-foreground"
+                              )}>
                                 {getActionIcon(step.type)}
-                                <span className="text-[6px] font-black uppercase tracking-tighter">{step.type}</span>
+                                {step.type}
                               </div>
                               {step.retryCount > 0 && (
-                                <span className="text-[6px] font-black text-accent uppercase tracking-widest bg-accent/10 px-1 rounded">
+                                <span className="text-[7px] font-black text-accent uppercase tracking-widest bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20">
                                   Retry {step.retryCount}
                                 </span>
                               )}
                             </div>
                             
                             <p className={cn(
-                              "text-[9px] font-bold leading-tight truncate pr-2",
+                              "text-[11px] font-bold leading-relaxed pr-4",
                               isActive ? "text-foreground" : "text-muted-foreground"
                             )}>
                               {step.description}
@@ -148,29 +151,29 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
                                <Button 
                                  variant="ghost" 
                                  size="sm" 
-                                 className="h-6 mt-1 w-full text-[7px] font-black uppercase bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 rounded-lg"
+                                 className="h-7 mt-2 w-full text-[8px] font-black uppercase bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 rounded-md"
                                  onClick={() => onIntervene(index)}
-                               >
-                                 Respond to Agent
+                                >
+                                 Respond to Operator Link
                                </Button>
                             )}
                           </div>
 
-                          <div className="flex justify-end">
+                          <div className="flex justify-end pt-1">
                             <div className={cn(
-                              "w-4 h-4 rounded-full flex items-center justify-center",
-                              isActive ? "text-primary" : isCompleted ? "text-accent/40" : "text-muted-foreground/20"
+                              "w-5 h-5 rounded-full flex items-center justify-center",
+                              isActive ? "text-primary" : isCompleted ? "text-accent" : "text-muted-foreground/20"
                             )}>
                               {needsReview && isCurrent ? (
-                                <AlertCircle className="w-3 h-3 text-destructive animate-bounce" />
+                                <AlertCircle className="w-4 h-4 text-destructive animate-pulse" />
                               ) : isRetrying ? (
-                                <RotateCcw className="w-3 h-3 text-accent animate-spin" />
+                                <RotateCcw className="w-4 h-4 text-accent animate-spin" />
                               ) : isActive ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
+                                <Loader2 className="w-4 h-4 animate-spin" />
                               ) : isCompleted ? (
-                                <CheckCircle2 className="w-3 h-3" />
+                                <CheckCircle2 className="w-4 h-4" />
                               ) : (
-                                <Circle className="w-2 h-2" />
+                                <Circle className="w-3 h-3" />
                               )}
                             </div>
                           </div>
