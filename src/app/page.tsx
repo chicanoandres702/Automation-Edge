@@ -165,40 +165,44 @@ export default function NexusControlCenter() {
         } : null);
       }
 
-    } catch (error) {
-      addLog("Node stream error. Recovering...", "warn");
+    } catch (error: any) {
+      addLog(`Execution Error: ${error.message || "Unknown hurdle"}`, "warn");
       setActiveTask(prev => prev ? { ...prev, status: 'running' } : null);
     }
   };
 
   const verifyGoalCompletion = async () => {
     if (!activeTask) return;
-    const stateSnapshot = await captureGlobalContext();
-    const result = await contextualSurveyAwareness({
-      goal: activeTask.prompt,
-      memory: activeTask.memory,
-      surveyContent: stateSnapshot,
-      missionContext: activeTask.missionContext,
-    });
+    try {
+      const stateSnapshot = await captureGlobalContext();
+      const result = await contextualSurveyAwareness({
+        goal: activeTask.prompt,
+        memory: activeTask.memory,
+        surveyContent: stateSnapshot,
+        missionContext: activeTask.missionContext,
+      });
 
-    if (result.isGoalAchieved) {
-      setActiveTask(prev => prev ? { ...prev, status: 'completed' } : null);
-      addLog("Mission Objective Verified: Complete.", "success");
-    } else {
-      addLog("Incomplete state detected. Extending loop.", "system");
-      const newStep: AutomationStep = {
-        id: `dynamic-${Date.now()}`,
-        description: `Resolve pending tasks for: ${activeTask.prompt}`,
-        type: 'navigate',
-        status: 'pending',
-        retryCount: 0,
-        maxRetries: 3
-      };
-      setActiveTask(prev => prev ? {
-        ...prev,
-        steps: [...prev.steps, newStep],
-        status: 'running'
-      } : null);
+      if (result.isGoalAchieved) {
+        setActiveTask(prev => prev ? { ...prev, status: 'completed' } : null);
+        addLog("Mission Objective Verified: Complete.", "success");
+      } else {
+        addLog("Incomplete state detected. Extending loop.", "system");
+        const newStep: AutomationStep = {
+          id: `dynamic-${Date.now()}`,
+          description: `Resolve pending tasks for: ${activeTask.prompt}`,
+          type: 'navigate',
+          status: 'pending',
+          retryCount: 0,
+          maxRetries: 3
+        };
+        setActiveTask(prev => prev ? {
+          ...prev,
+          steps: [...prev.steps, newStep],
+          status: 'running'
+        } : null);
+      }
+    } catch (e) {
+      addLog("Verification node timed out.", "warn");
     }
   };
 
@@ -245,8 +249,8 @@ export default function NexusControlCenter() {
         missionContext: result.neuralLock.missionId || missionId
       });
       setPrompt("");
-    } catch (error) {
-      addLog("Neural link failure.", "warn");
+    } catch (error: any) {
+      addLog(`Neural link failure: ${error.message || "Connection refused"}`, "warn");
     } finally {
       setIsGenerating(false);
     }
