@@ -17,7 +17,7 @@ import {
   Database,
   Fingerprint,
 } from "lucide-react";
-import { useFirebase, useMemoFirebase, useCollection, useUser } from "@/firebase";
+import { useFirebase, useMemoFirebase, useCollection } from "@/firebase";
 import { collection, deleteDoc, doc, updateDoc, arrayRemove } from "firebase/firestore";
 import { Slider } from "@/components/ui/slider";
 import { useState } from "react";
@@ -31,19 +31,18 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
-  const { firestore: db } = useFirebase();
-  const { user } = useUser();
+  const { firestore: db, user, isUserLoading } = useFirebase();
   
   // Ensure we wait for authentication before querying tools and missions
   const toolsRef = useMemoFirebase(() => {
-    if (!user || !db) return null;
+    if (isUserLoading || !user || !db) return null;
     return collection(db, "tools");
-  }, [db, user]);
+  }, [db, user, isUserLoading]);
 
   const missionsRef = useMemoFirebase(() => {
-    if (!user || !db) return null;
+    if (isUserLoading || !user || !db) return null;
     return collection(db, "missions");
-  }, [db, user]);
+  }, [db, user, isUserLoading]);
   
   const { data: tools } = useCollection<any>(toolsRef);
   const { data: missions } = useCollection<any>(missionsRef);
@@ -205,7 +204,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                              </Button>
                           </div>
                        ))}
-                       {tools?.length === 0 && (
+                       {tools?.length === 0 && !isUserLoading && (
                           <div className="py-20 flex flex-col items-center justify-center text-muted-foreground/30 border-2 border-dashed border-white/5 rounded-3xl">
                              <Globe className="w-8 h-8 mb-4 opacity-10" />
                              <p className="text-[10px] font-black uppercase tracking-widest">No shared nodes identified</p>
@@ -244,7 +243,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                              </div>
                           ))
                        ))}
-                       {missions?.every((m: any) => !m.learnedPatterns?.length) && (
+                       {missions?.every((m: any) => !m.learnedPatterns?.length) && !isUserLoading && (
                           <div className="py-20 flex flex-col items-center justify-center text-muted-foreground/30 border-2 border-dashed border-white/5 rounded-3xl">
                              <Database className="w-8 h-8 mb-4 opacity-10" />
                              <p className="text-[10px] font-black uppercase tracking-widest">No patterns cached</p>

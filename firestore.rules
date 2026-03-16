@@ -24,7 +24,7 @@ service cloud.firestore {
 
     /** Checks if the request is from a signed-in user. */
     function isSignedIn() {
-      return request.auth != null;
+      return request.auth != null && request.auth.uid != null;
     }
 
     /** Checks if the authenticated user's UID matches the provided userId. */
@@ -65,14 +65,14 @@ service cloud.firestore {
      * @description Neural Lock Missions. Access permitted to any authenticated operator.
      */
     match /missions/{missionId} {
-      allow read, write: if isSignedIn();
+      allow get, list, write: if isSignedIn();
     }
 
     /**
      * @description Shared Tool Infrastructure.
      */
     match /tools/{toolId} {
-      allow read, write: if isSignedIn();
+      allow get, list, write: if isSignedIn();
     }
   }
 }

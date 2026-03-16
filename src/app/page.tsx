@@ -27,7 +27,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AgentVisualizer } from "@/components/automation/visualizer";
 import { captureGlobalContext, executeAction } from "@/lib/dom-traversal";
 import { cn } from "@/lib/utils";
-import { useFirebase, useMemoFirebase, useCollection, useUser, initiateAnonymousSignIn } from "@/firebase";
+import { useFirebase, useMemoFirebase, useCollection, initiateAnonymousSignIn } from "@/firebase";
 import { doc, setDoc, collection, getDocs, getDoc, arrayUnion } from "firebase/firestore";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import {
@@ -51,8 +51,7 @@ export default function NexusControlCenter() {
   const [activeTask, setActiveTask] = useState<AutomationTask | null>(null);
   const [logs, setLogs] = useState<{msg: string, type: 'info' | 'warn' | 'success' | 'system'}[]>([]);
   
-  const { auth, firestore: db } = useFirebase();
-  const { user } = useUser();
+  const { auth, firestore: db, user, isUserLoading } = useFirebase();
   const { toast } = useToast();
   
   const [isInterventionOpen, setIsInterventionOpen] = useState(false);
@@ -73,10 +72,10 @@ export default function NexusControlCenter() {
 
   // Ensure operator is authenticated for Neural Lock access
   useEffect(() => {
-    if (!user && auth) {
+    if (!isUserLoading && !user && auth) {
       initiateAnonymousSignIn(auth);
     }
-  }, [user, auth]);
+  }, [isUserLoading, user, auth]);
 
   useEffect(() => {
     if (activeTask?.status === 'running' || activeTask?.status === 'seeking') {
@@ -480,13 +479,13 @@ export default function NexusControlCenter() {
 }
 
 function PersistenceRegistry() {
-  const { firestore: db, user } = useFirebase();
+  const { firestore: db, user, isUserLoading } = useFirebase();
   
   // Wait for authentication before initiating the mission stream
   const missionsRef = useMemoFirebase(() => {
-    if (!user || !db) return null;
+    if (isUserLoading || !user || !db) return null;
     return collection(db, "missions");
-  }, [db, user]);
+  }, [db, user, isUserLoading]);
   
   const { data: missions } = useCollection<any>(missionsRef);
   
@@ -512,7 +511,7 @@ function PersistenceRegistry() {
               </div>
             </div>
           ))}
-          {!missions?.length && (
+          {!missions?.length && !isUserLoading && (
              <div className="py-20 flex flex-col items-center justify-center opacity-20 border-2 border-dashed rounded-3xl border-white/5">
                 <Terminal className="w-12 h-12 mb-4" />
                 <p className="text-[10px] font-black uppercase">No persisted missions found</p>
