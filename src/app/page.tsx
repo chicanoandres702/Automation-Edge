@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -73,9 +74,10 @@ export default function NexusControlCenter() {
   // Ensure operator is authenticated for Neural Lock access
   useEffect(() => {
     if (!isUserLoading && !user && auth) {
+      addLog("Synchronizing Operator Identity...", "system");
       initiateAnonymousSignIn(auth);
     }
-  }, [isUserLoading, user, auth]);
+  }, [isUserLoading, user, auth, addLog]);
 
   useEffect(() => {
     if (activeTask?.status === 'running' || activeTask?.status === 'seeking') {
@@ -362,7 +364,7 @@ export default function NexusControlCenter() {
                 </div>
                 <Button 
                   onClick={handleStartMission} 
-                  disabled={isGenerating || !prompt.trim()} 
+                  disabled={isGenerating || !prompt.trim() || !user} 
                   className="h-12 px-8 bg-primary text-primary-foreground font-black uppercase text-[10px] tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/20"
                 >
                   {isGenerating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 fill-current mr-2" />}
@@ -388,7 +390,8 @@ export default function NexusControlCenter() {
                   />
                 </TabsContent>
                 <TabsContent value="history" className="flex-1 min-h-0 mt-0">
-                  <PersistenceRegistry />
+                  {/* Strict mask to ensure user is authenticated before streaming missions */}
+                  {user && <PersistenceRegistry />}
                 </TabsContent>
               </Tabs>
             </div>
@@ -481,13 +484,13 @@ export default function NexusControlCenter() {
 function PersistenceRegistry() {
   const { firestore: db, user, isUserLoading } = useFirebase();
   
-  // Wait for authentication before initiating the mission stream
+  // Explicitly wait for stable authentication before initiating the mission stream
   const missionsRef = useMemoFirebase(() => {
     if (isUserLoading || !user || !db) return null;
     return collection(db, "missions");
   }, [db, user, isUserLoading]);
   
-  const { data: missions } = useCollection<any>(missionsRef);
+  const { data: missions, isLoading } = useCollection<any>(missionsRef);
   
   return (
     <Card className="flex-1 bg-black/40 backdrop-blur-md border-white/5 p-6 rounded-3xl flex flex-col min-h-0 overflow-hidden">
@@ -511,11 +514,16 @@ function PersistenceRegistry() {
               </div>
             </div>
           ))}
-          {!missions?.length && !isUserLoading && (
+          {!missions?.length && !isLoading && !isUserLoading && (
              <div className="py-20 flex flex-col items-center justify-center opacity-20 border-2 border-dashed rounded-3xl border-white/5">
                 <Terminal className="w-12 h-12 mb-4" />
                 <p className="text-[10px] font-black uppercase">No persisted missions found</p>
              </div>
+          )}
+          {isLoading && (
+            <div className="flex justify-center p-10">
+              <RefreshCw className="w-5 h-5 animate-spin text-primary/40" />
+            </div>
           )}
         </div>
       </ScrollArea>

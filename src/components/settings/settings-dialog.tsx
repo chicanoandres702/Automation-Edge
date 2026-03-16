@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -33,14 +34,14 @@ interface SettingsDialogProps {
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const { firestore: db, user, isUserLoading } = useFirebase();
   
-  // Ensure we wait for authentication before querying tools and missions
+  // Ensure we wait for stable authentication before querying tools and missions
   const toolsRef = useMemoFirebase(() => {
-    if (isUserLoading || !user || !db) return null;
+    if (isUserLoading || !user || !user.uid || !db) return null;
     return collection(db, "tools");
   }, [db, user, isUserLoading]);
 
   const missionsRef = useMemoFirebase(() => {
-    if (isUserLoading || !user || !db) return null;
+    if (isUserLoading || !user || !user.uid || !db) return null;
     return collection(db, "missions");
   }, [db, user, isUserLoading]);
   
