@@ -18,7 +18,8 @@ import {
   XCircle,
   Undo2,
   MessageSquare,
-  RotateCcw
+  RotateCcw,
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -60,13 +61,36 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
 
   if (steps.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full border-2 border-dashed rounded-3xl border-white/5 p-8 text-center bg-white/[0.01]">
-        <div className="w-16 h-16 rounded-full bg-primary/5 flex items-center justify-center mb-6">
-          <PlayCircle className="w-8 h-8 text-primary opacity-30 animate-pulse" />
+      <div className="flex flex-col items-center justify-center h-full border-2 border-dashed rounded-3xl border-white/5 p-12 text-center bg-white/[0.01] relative overflow-hidden">
+        <div className="absolute inset-0 opacity-5 pointer-events-none">
+           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px]" />
         </div>
-        <p className="font-black uppercase tracking-[0.2em] text-[10px] text-muted-foreground/50 max-w-[200px]">
-          Mission standby. Awaiting tactical injection.
-        </p>
+        
+        <div className="w-20 h-20 rounded-3xl bg-primary/5 flex items-center justify-center mb-8 ring-1 ring-primary/20 shadow-inner">
+          <PlayCircle className="w-10 h-10 text-primary opacity-30 animate-pulse" />
+        </div>
+        
+        <div className="space-y-4 max-w-sm">
+          <h3 className="font-black uppercase tracking-[0.3em] text-[12px] text-foreground">Mission Standby</h3>
+          <p className="text-[10px] text-muted-foreground font-medium leading-relaxed uppercase tracking-widest opacity-60">
+            Nexus Fleet is ready for tactical injection. Inject an objective to begin.
+          </p>
+          
+          <div className="pt-8 grid grid-cols-1 gap-3">
+             <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/[0.03] border border-white/5">
+                <div className="w-6 h-6 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold text-[10px]">1</div>
+                <p className="text-[9px] font-black uppercase text-left opacity-40">Sync Identity</p>
+             </div>
+             <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/[0.03] border border-white/5">
+                <div className="w-6 h-6 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold text-[10px]">2</div>
+                <p className="text-[9px] font-black uppercase text-left opacity-40">Enter Objective</p>
+             </div>
+             <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/[0.03] border border-white/5">
+                <div className="w-6 h-6 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold text-[10px]">3</div>
+                <p className="text-[9px] font-black uppercase text-left opacity-40">Establish Neural Lock</p>
+             </div>
+          </div>
+        </div>
       </div>
     );
   }

@@ -17,7 +17,10 @@ import {
   Unlock,
   ChevronRight,
   ShieldCheck,
-  History
+  History,
+  BookOpen,
+  Globe,
+  Search
 } from "lucide-react";
 import { AutomationTask, AutomationStep, ExecutionMemory } from "@/lib/types";
 import { generateAutomationFromPrompt } from "@/ai/flows/generate-automation-from-prompt";
@@ -76,6 +79,8 @@ export default function NexusControlCenter() {
     if (!isUserLoading && !user && auth) {
       addLog("Synchronizing Operator Identity...", "system");
       initiateAnonymousSignIn(auth);
+    } else if (user) {
+      addLog("Operator Identity Synced", "success");
     }
   }, [isUserLoading, user, auth, addLog]);
 
@@ -207,8 +212,9 @@ export default function NexusControlCenter() {
     }
   };
 
-  const handleStartMission = async () => {
-    if (!prompt.trim() || !user) {
+  const handleStartMission = async (customPrompt?: string) => {
+    const finalPrompt = customPrompt || prompt;
+    if (!finalPrompt.trim() || !user) {
       if (!user) {
         toast({
           variant: "destructive",
@@ -223,7 +229,7 @@ export default function NexusControlCenter() {
     try {
       const toolsSnap = await getDocs(collection(db, "tools"));
       const sharedToolHostnames = toolsSnap.docs.map(d => d.data().hostname);
-      const result = await generateAutomationFromPrompt({ prompt, missionContext: missionId || undefined, sharedToolHostnames });
+      const result = await generateAutomationFromPrompt({ prompt: finalPrompt, missionContext: missionId || undefined, sharedToolHostnames });
       
       let initialStatus: AutomationTask['status'] = 'running';
       if (result.neuralLock.missionId) {
@@ -247,7 +253,7 @@ export default function NexusControlCenter() {
 
       setActiveTask({
         id: `task-${now}`,
-        prompt,
+        prompt: finalPrompt,
         status: initialStatus,
         steps: newSteps,
         currentStepIndex: 0,
@@ -291,6 +297,12 @@ export default function NexusControlCenter() {
     setInterventionResponse("");
     setPendingActionData(null);
   };
+
+  const quickStarts = [
+    { label: "Scan Capella for assignments", prompt: "Scan Capella Courseroom for all pending assignments", icon: BookOpen },
+    { label: "Complete SWK-2400 Week 3", prompt: "Complete all Week 3 requirements for course SWK-2400", icon: Search },
+    { label: "Resolve active hurdles", prompt: "Scan dashboard for any tasks requiring immediate intervention", icon: Globe }
+  ];
 
   const agentPortrait = PlaceHolderImages.find(img => img.id === 'agent-portrait');
   if (!mounted) return null;
@@ -358,7 +370,7 @@ export default function NexusControlCenter() {
         </header>
 
         <main className="flex-1 flex flex-col min-h-0 z-10 relative p-4 md:p-6 space-y-6">
-          <div className="max-w-4xl mx-auto w-full">
+          <div className="max-w-4xl mx-auto w-full space-y-4">
             <Card className="p-1.5 bg-black/40 backdrop-blur-3xl border-white/10 rounded-2xl shadow-2xl ring-1 ring-white/10 group transition-all duration-300 hover:ring-primary/20">
               <div className="flex flex-col sm:flex-row gap-2 p-2">
                 <div className="relative flex-1">
@@ -372,7 +384,7 @@ export default function NexusControlCenter() {
                   />
                 </div>
                 <Button 
-                  onClick={handleStartMission} 
+                  onClick={() => handleStartMission()} 
                   disabled={isGenerating || !prompt.trim() || !user} 
                   className="h-12 px-8 bg-primary text-primary-foreground font-black uppercase text-[10px] tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/20"
                 >
@@ -381,6 +393,22 @@ export default function NexusControlCenter() {
                 </Button>
               </div>
             </Card>
+
+            <div className="flex flex-wrap gap-2 px-2">
+               {quickStarts.map((start, i) => (
+                 <Button
+                  key={i}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleStartMission(start.prompt)}
+                  disabled={isGenerating || !user}
+                  className="h-8 bg-white/5 border-white/5 hover:bg-white/10 hover:border-primary/30 text-[9px] font-black uppercase tracking-widest rounded-lg px-4 gap-2 transition-all"
+                 >
+                   <start.icon className="w-3 h-3 text-primary/60" />
+                   {start.label}
+                 </Button>
+               ))}
+            </div>
           </div>
 
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
@@ -399,7 +427,6 @@ export default function NexusControlCenter() {
                   />
                 </TabsContent>
                 <TabsContent value="history" className="flex-1 min-h-0 mt-0">
-                  {/* Wait for stable authentication before mounting history registry */}
                   {user && !isUserLoading ? <PersistenceRegistry /> : (
                     <div className="flex flex-col items-center justify-center h-full opacity-20">
                       <RefreshCw className="w-8 h-8 animate-spin mb-4" />
@@ -498,7 +525,6 @@ export default function NexusControlCenter() {
 function PersistenceRegistry() {
   const { firestore: db, user, isUserLoading } = useFirebase();
   
-  // Guard reference with authentication check
   const missionsRef = useMemoFirebase(() => {
     if (isUserLoading || !user || !db) return null;
     return collection(db, "missions");
