@@ -94,7 +94,7 @@ export default function NexusControlCenter() {
   }, [activeTask?.status, activeTask?.currentStepIndex]);
 
   const executeNextStep = async () => {
-    if (!activeTask || !user) return;
+    if (!activeTask || !user || !db) return;
 
     const currentStep = activeTask.steps[activeTask.currentStepIndex];
     if (!currentStep) {
@@ -214,7 +214,7 @@ export default function NexusControlCenter() {
 
   const handleStartMission = async (customPrompt?: string) => {
     const finalPrompt = customPrompt || prompt;
-    if (!finalPrompt.trim() || !user) {
+    if (!finalPrompt.trim() || !user || !db) {
       if (!user) {
         toast({
           variant: "destructive",
@@ -273,7 +273,7 @@ export default function NexusControlCenter() {
   };
 
   const handleInterventionSubmit = () => {
-    if (!activeTask) return;
+    if (!activeTask || !db) return;
     
     if (shouldLearnPattern && activeTask.missionContext && pendingActionData?.successPatternIdentified) {
        addLog(`Caching Neural Pattern: ${pendingActionData.successPatternIdentified}`, "success");
@@ -299,9 +299,9 @@ export default function NexusControlCenter() {
   };
 
   const quickStarts = [
-    { label: "Scan Capella for assignments", prompt: "Scan Capella Courseroom for all pending assignments", icon: BookOpen },
-    { label: "Complete SWK-2400 Week 3", prompt: "Complete all Week 3 requirements for course SWK-2400", icon: Search },
-    { label: "Resolve active hurdles", prompt: "Scan dashboard for any tasks requiring immediate intervention", icon: Globe }
+    { label: "Scan assignments", prompt: "Scan student portal for all pending assignments", icon: BookOpen },
+    { label: "Complete Week 3", prompt: "Complete all Week 3 requirements for course SWK-2400", icon: Search },
+    { label: "Resolve hurdles", prompt: "Scan dashboard for tasks requiring immediate intervention", icon: Globe }
   ];
 
   const agentPortrait = PlaceHolderImages.find(img => img.id === 'agent-portrait');

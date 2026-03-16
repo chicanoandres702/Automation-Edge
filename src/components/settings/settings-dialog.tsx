@@ -34,7 +34,6 @@ interface SettingsDialogProps {
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const { firestore: db, user, isUserLoading } = useFirebase();
   
-  // Guard references with authentication checks to prevent permission errors
   const toolsRef = useMemoFirebase(() => {
     if (isUserLoading || !user || !db) return null;
     return collection(db, "tools");
@@ -50,7 +49,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   
   const [autonomyThreshold, setAutonomyThreshold] = useState([0.85]);
   const [activeTab, setActiveTab] = useState("autonomy");
-  const [identityMode, setIdentityMode] = useState(true); // Persistent by default
+  const [identityMode, setIdentityMode] = useState(true);
 
   const handleDeleteTool = async (id: string) => {
     if (!db) return;
@@ -73,7 +72,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           Configure Nexus agent autonomy, shared tool infrastructure, and learned success patterns.
         </DialogDescription>
         <div className="flex h-[550px]">
-          {/* Sidebar Navigation */}
           <div className="w-52 border-r border-white/5 bg-white/[0.02] p-5 flex flex-col gap-6">
              <div className="flex items-center gap-3 px-2">
                 <div className="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30">
@@ -118,7 +116,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
              </div>
           </div>
 
-          {/* Main Content Area */}
           <div className="flex-1 p-8 flex flex-col min-h-0 bg-gradient-to-br from-transparent to-primary/5">
              <ScrollArea className="flex-1 pr-4">
                 {activeTab === 'autonomy' && (
@@ -158,17 +155,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                           </div>
                           <Switch checked={identityMode} onCheckedChange={setIdentityMode} className="scale-75 data-[state=checked]:bg-accent" />
                        </div>
-
-                       <div className="grid grid-cols-2 gap-4">
-                          <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
-                             <span className="text-[9px] font-black uppercase text-accent">Auto-Verify</span>
-                             <p className="text-[8px] text-muted-foreground">Bypass confirmation when visual patterns match history.</p>
-                          </div>
-                          <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
-                             <span className="text-[9px] font-black uppercase text-primary">Neural Locking</span>
-                             <p className="text-[8px] text-muted-foreground">Automatically silo mission memory based on course ID.</p>
-                          </div>
-                       </div>
                     </div>
                   </div>
                 )}
@@ -180,7 +166,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         <h3 className="text-[12px] font-black uppercase tracking-widest text-primary">Shared Infrastructure</h3>
                         <p className="text-[10px] text-muted-foreground">Manage universal tool hostnames accessible across all missions.</p>
                       </div>
-                      <Button variant="outline" size="sm" className="h-8 text-[9px] font-black uppercase border-white/10 bg-white/5 hover:bg-primary/10 hover:border-primary/30 transition-all">Add Node</Button>
                     </div>
 
                     <div className="space-y-2">
