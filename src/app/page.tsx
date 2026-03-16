@@ -208,7 +208,16 @@ export default function NexusControlCenter() {
   };
 
   const handleStartMission = async () => {
-    if (!prompt.trim() || !user) return;
+    if (!prompt.trim() || !user) {
+      if (!user) {
+        toast({
+          variant: "destructive",
+          title: "Identity Not Synced",
+          description: "Please wait for kernel operator synchronization."
+        });
+      }
+      return;
+    }
     setIsGenerating(true);
     addLog(`Initiating Tactical Neural Link...`, "info");
     try {
@@ -390,8 +399,13 @@ export default function NexusControlCenter() {
                   />
                 </TabsContent>
                 <TabsContent value="history" className="flex-1 min-h-0 mt-0">
-                  {/* Strict mask to ensure user is authenticated before streaming missions */}
-                  {user && <PersistenceRegistry />}
+                  {/* Wait for stable authentication before mounting history registry */}
+                  {user && !isUserLoading ? <PersistenceRegistry /> : (
+                    <div className="flex flex-col items-center justify-center h-full opacity-20">
+                      <RefreshCw className="w-8 h-8 animate-spin mb-4" />
+                      <p className="text-[10px] font-black uppercase">Syncing Persistence Matrix...</p>
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </div>
@@ -484,7 +498,7 @@ export default function NexusControlCenter() {
 function PersistenceRegistry() {
   const { firestore: db, user, isUserLoading } = useFirebase();
   
-  // Explicitly wait for stable authentication before initiating the mission stream
+  // Guard reference with authentication check
   const missionsRef = useMemoFirebase(() => {
     if (isUserLoading || !user || !db) return null;
     return collection(db, "missions");
@@ -520,7 +534,7 @@ function PersistenceRegistry() {
                 <p className="text-[10px] font-black uppercase">No persisted missions found</p>
              </div>
           )}
-          {isLoading && (
+          {(isLoading || isUserLoading) && (
             <div className="flex justify-center p-10">
               <RefreshCw className="w-5 h-5 animate-spin text-primary/40" />
             </div>

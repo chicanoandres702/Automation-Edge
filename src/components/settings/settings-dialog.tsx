@@ -34,19 +34,19 @@ interface SettingsDialogProps {
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const { firestore: db, user, isUserLoading } = useFirebase();
   
-  // Ensure we wait for stable authentication before querying tools and missions
+  // Guard references with authentication checks to prevent permission errors
   const toolsRef = useMemoFirebase(() => {
-    if (isUserLoading || !user || !user.uid || !db) return null;
+    if (isUserLoading || !user || !db) return null;
     return collection(db, "tools");
   }, [db, user, isUserLoading]);
 
   const missionsRef = useMemoFirebase(() => {
-    if (isUserLoading || !user || !user.uid || !db) return null;
+    if (isUserLoading || !user || !db) return null;
     return collection(db, "missions");
   }, [db, user, isUserLoading]);
   
-  const { data: tools } = useCollection<any>(toolsRef);
-  const { data: missions } = useCollection<any>(missionsRef);
+  const { data: tools, isLoading: toolsLoading } = useCollection<any>(toolsRef);
+  const { data: missions, isLoading: missionsLoading } = useCollection<any>(missionsRef);
   
   const [autonomyThreshold, setAutonomyThreshold] = useState([0.85]);
   const [activeTab, setActiveTab] = useState("autonomy");
@@ -184,7 +184,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     </div>
 
                     <div className="space-y-2">
-                       {tools?.map((tool: any) => (
+                       {toolsLoading ? (
+                          <div className="flex justify-center py-10">
+                            <RefreshCw className="w-5 h-5 animate-spin text-primary/40" />
+                          </div>
+                       ) : tools?.map((tool: any) => (
                           <div key={tool.id} className="group flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-primary/20 transition-all">
                              <div className="flex items-center gap-4">
                                 <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
@@ -205,7 +209,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                              </Button>
                           </div>
                        ))}
-                       {tools?.length === 0 && !isUserLoading && (
+                       {!toolsLoading && tools?.length === 0 && (
                           <div className="py-20 flex flex-col items-center justify-center text-muted-foreground/30 border-2 border-dashed border-white/5 rounded-3xl">
                              <Globe className="w-8 h-8 mb-4 opacity-10" />
                              <p className="text-[10px] font-black uppercase tracking-widest">No shared nodes identified</p>
@@ -223,7 +227,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     </div>
 
                     <div className="space-y-3">
-                       {missions?.map((mission: any) => (
+                       {missionsLoading ? (
+                          <div className="flex justify-center py-10">
+                            <RefreshCw className="w-5 h-5 animate-spin text-primary/40" />
+                          </div>
+                       ) : missions?.map((mission: any) => (
                           mission.learnedPatterns?.map((pattern: any, idx: number) => (
                              <div key={`${mission.id}-${idx}`} className="group flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-accent/20 transition-all">
                                 <div className="flex-1 min-w-0 pr-4">
@@ -244,7 +252,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                              </div>
                           ))
                        ))}
-                       {missions?.every((m: any) => !m.learnedPatterns?.length) && !isUserLoading && (
+                       {!missionsLoading && missions?.every((m: any) => !m.learnedPatterns?.length) && (
                           <div className="py-20 flex flex-col items-center justify-center text-muted-foreground/30 border-2 border-dashed border-white/5 rounded-3xl">
                              <Database className="w-8 h-8 mb-4 opacity-10" />
                              <p className="text-[10px] font-black uppercase tracking-widest">No patterns cached</p>
