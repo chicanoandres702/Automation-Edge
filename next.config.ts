@@ -1,9 +1,6 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  // Static export is required for standard browser extensions
-  output: 'export',
-  distDir: 'out',
   typescript: {
     ignoreBuildErrors: true,
   },

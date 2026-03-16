@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -8,17 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { 
   Zap,
-  Activity,
   Terminal,
   BrainCircuit,
   Settings as SettingsIcon,
   RefreshCw,
   Sparkles,
-  Cloud,
   Lock,
   Unlock,
-  Search,
-  Eye,
   ChevronRight,
   ShieldCheck,
   History
@@ -32,7 +27,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AgentVisualizer } from "@/components/automation/visualizer";
 import { captureGlobalContext, executeAction } from "@/lib/dom-traversal";
 import { cn } from "@/lib/utils";
-import { useFirebase } from "@/firebase";
+import { useFirebase, useMemoFirebase, useCollection } from "@/firebase";
 import { doc, setDoc, collection, getDocs, getDoc, arrayUnion } from "firebase/firestore";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import {
@@ -46,7 +41,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { SettingsDialog } from "@/components/settings/settings-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCollection } from "@/firebase/firestore/use-collection";
 
 export default function NexusControlCenter() {
   const [mounted, setMounted] = useState(false);
@@ -57,7 +51,7 @@ export default function NexusControlCenter() {
   const [activeTask, setActiveTask] = useState<AutomationTask | null>(null);
   const [logs, setLogs] = useState<{msg: string, type: 'info' | 'warn' | 'success' | 'system'}[]>([]);
   
-  const { db } = useFirebase();
+  const { firestore: db } = useFirebase();
   const { toast } = useToast();
   
   const [isInterventionOpen, setIsInterventionOpen] = useState(false);
@@ -481,7 +475,9 @@ export default function NexusControlCenter() {
 }
 
 function PersistenceRegistry() {
-  const { data: missions } = useCollection<any>("missions");
+  const { firestore: db } = useFirebase();
+  const missionsRef = useMemoFirebase(() => collection(db, "missions"), [db]);
+  const { data: missions } = useCollection<any>(missionsRef);
   
   return (
     <Card className="flex-1 bg-black/40 backdrop-blur-md border-white/5 p-6 rounded-3xl flex flex-col min-h-0 overflow-hidden">

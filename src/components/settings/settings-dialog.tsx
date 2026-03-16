@@ -16,17 +16,14 @@ import {
   Zap, 
   Database,
   Fingerprint,
-  RefreshCcw
 } from "lucide-react";
-import { useFirebase } from "@/firebase";
-import { useCollection } from "@/firebase/firestore/use-collection";
-import { deleteDoc, doc, updateDoc, arrayRemove } from "firebase/firestore";
+import { useFirebase, useMemoFirebase, useCollection } from "@/firebase";
+import { collection, deleteDoc, doc, updateDoc, arrayRemove } from "firebase/firestore";
 import { Slider } from "@/components/ui/slider";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -34,9 +31,13 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
-  const { db } = useFirebase();
-  const { data: tools } = useCollection<any>("tools");
-  const { data: missions } = useCollection<any>("missions");
+  const { firestore: db } = useFirebase();
+  
+  const toolsRef = useMemoFirebase(() => collection(db, "tools"), [db]);
+  const missionsRef = useMemoFirebase(() => collection(db, "missions"), [db]);
+  
+  const { data: tools } = useCollection<any>(toolsRef);
+  const { data: missions } = useCollection<any>(missionsRef);
   
   const [autonomyThreshold, setAutonomyThreshold] = useState([0.85]);
   const [activeTab, setActiveTab] = useState("autonomy");
