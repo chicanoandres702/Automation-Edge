@@ -10,19 +10,8 @@
  * - /users/{userId}: Root user profile containing preferences and Google ID.
  * - /users/{userId}/automationTasks/{taskId}: User-defined automation workflows.
  * - /users/{userId}/automationTasks/{taskId}/logEntries/{logId}: Execution history for tasks.
- *
- * KEY SECURITY DECISIONS:
- * 1. Path-Based Authorization: By nesting all data under /users/{userId}, we leverage the 
- *    Firestore path as the primary security boundary.
- * 2. Authorization Independence: Critical relational fields (like 'userId') are denormalized 
- *    into documents and validated against the path. This ensures that even if a document 
- *    is accessed via a collection group query (if enabled later), ownership is maintained 
- *    without costly cross-document lookups (get() calls).
- * 3. Prototyping Flexibility: While authorization and relational integrity are strictly 
- *    enforced, the internal schema of automation configurations and log details is left 
- *    flexible to allow for rapid iterative development.
- * 4. Immutability: Ownership links (userId) are enforced as immutable during updates to 
- *    prevent documents from being "orphaned" or transferred between users.
+ * - /missions/{missionId}: Siloed mission memory (Neural Lock).
+ * - /tools/{toolId}: Shared tool infrastructure hostnames.
  */
 
 rules_version = '2';
@@ -49,11 +38,7 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for User Profiles. Allows users to manage their own settings.
-     * @path /users/{userId}
-     * @allow (create) User with UID 'abc' creating /users/abc
-     * @deny (create) User with UID 'abc' creating /users/xyz
-     * @principle Enforces path-based ownership and validates relational ID consistency.
+     * @description Rules for User Profiles.
      */
     match /users/{userId} {
       allow get, list: if isOwner(userId);
@@ -61,26 +46,12 @@ service cloud.firestore {
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
 
-      /**
-       * @description Rules for Automation Tasks. Private workflows owned by the user.
-       * @path /users/{userId}/automationTasks/{taskId}
-       * @allow (update) User 'abc' updating their task /users/abc/automationTasks/task123
-       * @deny (list) User 'abc' listing /users/xyz/automationTasks
-       * @principle Authorization Independence: Validates userId in data matches the path.
-       */
       match /automationTasks/{taskId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
         allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
         allow delete: if isExistingOwner(userId);
 
-        /**
-         * @description Rules for execution logs. History entries for specific tasks.
-         * @path /users/{userId}/automationTasks/{taskId}/logEntries/{logId}
-         * @allow (create) User 'abc' adding a log to their task.
-         * @deny (delete) User 'abc' trying to delete a log in user 'xyz's path.
-         * @principle Deeply nested path-based ownership with redundant data-field validation.
-         */
         match /logEntries/{logId} {
           allow get, list: if isOwner(userId);
           allow create: if isOwner(userId) && request.resource.data.userId == userId;
@@ -88,6 +59,20 @@ service cloud.firestore {
           allow delete: if isExistingOwner(userId);
         }
       }
+    }
+
+    /**
+     * @description Neural Lock Missions. Access permitted to any authenticated operator.
+     */
+    match /missions/{missionId} {
+      allow read, write: if isSignedIn();
+    }
+
+    /**
+     * @description Shared Tool Infrastructure.
+     */
+    match /tools/{toolId} {
+      allow read, write: if isSignedIn();
     }
   }
 }

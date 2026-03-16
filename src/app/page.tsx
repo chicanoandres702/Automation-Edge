@@ -27,7 +27,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AgentVisualizer } from "@/components/automation/visualizer";
 import { captureGlobalContext, executeAction } from "@/lib/dom-traversal";
 import { cn } from "@/lib/utils";
-import { useFirebase, useMemoFirebase, useCollection } from "@/firebase";
+import { useFirebase, useMemoFirebase, useCollection, useUser, initiateAnonymousSignIn } from "@/firebase";
 import { doc, setDoc, collection, getDocs, getDoc, arrayUnion } from "firebase/firestore";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import {
@@ -51,7 +51,8 @@ export default function NexusControlCenter() {
   const [activeTask, setActiveTask] = useState<AutomationTask | null>(null);
   const [logs, setLogs] = useState<{msg: string, type: 'info' | 'warn' | 'success' | 'system'}[]>([]);
   
-  const { firestore: db } = useFirebase();
+  const { auth, firestore: db } = useFirebase();
+  const { user } = useUser();
   const { toast } = useToast();
   
   const [isInterventionOpen, setIsInterventionOpen] = useState(false);
@@ -70,6 +71,13 @@ export default function NexusControlCenter() {
     addLog("Nexus Kernel v6.5 Initialized", "system");
   }, [addLog]);
 
+  // Ensure operator is authenticated for Neural Lock access
+  useEffect(() => {
+    if (!user && auth) {
+      initiateAnonymousSignIn(auth);
+    }
+  }, [user, auth]);
+
   useEffect(() => {
     if (activeTask?.status === 'running' || activeTask?.status === 'seeking') {
       const timer = setTimeout(async () => {
@@ -80,7 +88,7 @@ export default function NexusControlCenter() {
   }, [activeTask?.status, activeTask?.currentStepIndex]);
 
   const executeNextStep = async () => {
-    if (!activeTask) return;
+    if (!activeTask || !user) return;
 
     const currentStep = activeTask.steps[activeTask.currentStepIndex];
     if (!currentStep) {
@@ -118,7 +126,6 @@ export default function NexusControlCenter() {
         platformContext: platformContext,
       });
 
-      // Adaptive Autonomy: Bypass intervention if confidence is high (Learning success)
       if (result.action === 'ASK_USER' && result.confidence < 0.85) {
         setInterventionQuestion(result.parameters.question || "Strategic ambiguity encountered.");
         setPendingActionData(result);
@@ -127,7 +134,6 @@ export default function NexusControlCenter() {
         return;
       }
 
-      // Execute Action Bridge
       if (result.action !== 'ASK_USER' && result.action !== 'WAIT') {
         await executeAction(result.action, result.parameters);
       }
@@ -201,7 +207,7 @@ export default function NexusControlCenter() {
   };
 
   const handleStartMission = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || !user) return;
     setIsGenerating(true);
     addLog(`Initiating Tactical Neural Link...`, "info");
     try {
@@ -253,7 +259,6 @@ export default function NexusControlCenter() {
   const handleInterventionSubmit = () => {
     if (!activeTask) return;
     
-    // If learning is enabled, cache the pattern
     if (shouldLearnPattern && activeTask.missionContext && pendingActionData?.successPatternIdentified) {
        addLog(`Caching Neural Pattern: ${pendingActionData.successPatternIdentified}`, "success");
        const missionRef = doc(db, "missions", activeTask.missionContext);
@@ -475,8 +480,14 @@ export default function NexusControlCenter() {
 }
 
 function PersistenceRegistry() {
-  const { firestore: db } = useFirebase();
-  const missionsRef = useMemoFirebase(() => collection(db, "missions"), [db]);
+  const { firestore: db, user } = useFirebase();
+  
+  // Wait for authentication before initiating the mission stream
+  const missionsRef = useMemoFirebase(() => {
+    if (!user || !db) return null;
+    return collection(db, "missions");
+  }, [db, user]);
+  
   const { data: missions } = useCollection<any>(missionsRef);
   
   return (

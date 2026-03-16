@@ -17,7 +17,7 @@ import {
   Database,
   Fingerprint,
 } from "lucide-react";
-import { useFirebase, useMemoFirebase, useCollection } from "@/firebase";
+import { useFirebase, useMemoFirebase, useCollection, useUser } from "@/firebase";
 import { collection, deleteDoc, doc, updateDoc, arrayRemove } from "firebase/firestore";
 import { Slider } from "@/components/ui/slider";
 import { useState } from "react";
@@ -32,9 +32,18 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const { firestore: db } = useFirebase();
+  const { user } = useUser();
   
-  const toolsRef = useMemoFirebase(() => collection(db, "tools"), [db]);
-  const missionsRef = useMemoFirebase(() => collection(db, "missions"), [db]);
+  // Ensure we wait for authentication before querying tools and missions
+  const toolsRef = useMemoFirebase(() => {
+    if (!user || !db) return null;
+    return collection(db, "tools");
+  }, [db, user]);
+
+  const missionsRef = useMemoFirebase(() => {
+    if (!user || !db) return null;
+    return collection(db, "missions");
+  }, [db, user]);
   
   const { data: tools } = useCollection<any>(toolsRef);
   const { data: missions } = useCollection<any>(missionsRef);
@@ -44,10 +53,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [identityMode, setIdentityMode] = useState(true); // Persistent by default
 
   const handleDeleteTool = async (id: string) => {
+    if (!db) return;
     await deleteDoc(doc(db, "tools", id));
   };
 
   const handleDeletePattern = async (missionId: string, pattern: any) => {
+    if (!db) return;
     const missionRef = doc(db, "missions", missionId);
     await updateDoc(missionRef, {
       learnedPatterns: arrayRemove(pattern)
