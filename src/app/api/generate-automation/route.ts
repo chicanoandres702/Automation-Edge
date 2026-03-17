@@ -1,26 +1,29 @@
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
+  console.log('[API] Received generate-automation request');
   try {
     const body = await req.json();
+    console.log('[API] Request body parsed');
 
-    // If an apiKey is provided in the request body, inject it into the
-    // environment BEFORE importing the flow. This ensures the genkit
-    // Google AI plugin reads the key at initialization time.
     const apiKey = body?.apiKey || body?.ai_api_key || null;
     if (apiKey) {
-      // Set env var for Google AI plugin (development/testing only).
-      // This allows callers to supply a per-request key from the client
-      // (stored in extension storage) when the server does not have a
-      // centrally configured key.
+      console.log('[API] Injecting provided API key into environment');
       process.env.GOOGLE_API_KEY = apiKey;
+    } else {
+      console.log('[API] Using pre-configured environment API key');
     }
 
-    // Dynamically import the flow after setting env so genkit reads the key
+    console.log('[API] Dynamically importing flow...');
     const mod = await import('@/ai/flows/generate-automation-from-prompt');
+    console.log('[API] Flow imported. Initiating generation...');
+
     const result = await mod.generateAutomationFromPrompt(body);
+    console.log('[API] Generation successful');
+
     return NextResponse.json(result);
   } catch (err: any) {
+    console.error('[API] Error during generation:', err);
     return NextResponse.json({ error: err?.message || 'AI generation failed' }, { status: 500 });
   }
 }

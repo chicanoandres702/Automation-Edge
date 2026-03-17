@@ -1,20 +1,90 @@
-import { useState, useCallback } from "react";
-import { doc, getDoc, arrayUnion, setDoc } from "firebase/firestore";
+"use client";
+
+import { useState, useCallback, useEffect } from "react";
+import { doc, arrayUnion, setDoc } from "firebase/firestore";
 import { Firestore } from "firebase/firestore";
 import { AutomationTask, ExecutionMemory } from "@/lib/types";
-import { captureGlobalContext, executeAction } from "@/lib/dom-traversal";
+import { captureGlobalContext } from "@/lib/dom-traversal";
+import { executeAction } from "@/lib/dom-actions";
+import { updateBrowserOverlay } from "@/lib/dom-overlay";
 import { fetchAISurvey } from "../services/mission.service";
+
+// MAX_RETRIES: number of step failures before operator intervention is required
+const MAX_RETRIES = 3;
+const STEP_DELAY_MS = 1000;
 
 export function useMissionExecution(
     activeTask: AutomationTask | null,
     setActiveTask: React.Dispatch<React.SetStateAction<AutomationTask | null>>,
     db: Firestore | null,
-    addLog: (msg: string, type?: any) => void,
+    addLog: (msg: string, type?: string) => void,
     manualMode: boolean
 ) {
     const [isInterventionOpen, setIsInterventionOpen] = useState(false);
     const [interventionQuestion, setInterventionQuestion] = useState("");
     const [pendingActionData, setPendingActionData] = useState<any>(null);
+
+    useEffect(() => {
+        const isMissionActive = activeTask && ['running', 'seeking', 'intervention_required'].includes(activeTask.status);
+        
+        if (isMissionActive && activeTask.steps.length) {
+            const index = activeTask.currentStepIndex;
+            const step = activeTask.steps[index] || activeTask.steps[index - 1]; // Use last step if index is at end
+            if (step) {
+                updateBrowserOverlay(step.description, activeTask.status);
+            }
+            
+            if (activeTask.status === 'running' && !manualMode) {
+                const timer = setTimeout(() => executeNextStep(), STEP_DELAY_MS);
+                return () => clearTimeout(timer);
+            }
+        } else {
+            updateBrowserOverlay(null);
+        }
+    }, [activeTask?.status, activeTask?.currentStepIndex, manualMode, activeTask?.id]);
+
+    // Auto-open control modal when the AI signals strategic ambiguity
+    useEffect(() => {
+        if (activeTask?.status === 'seeking' && !isInterventionOpen) {
+            setInterventionQuestion("Strategic ambiguity — please refine or confirm the mission objective.");
+            setIsInterventionOpen(true);
+        }
+    }, [activeTask?.status]);
+
+    const triggerIntervention = useCallback((question: string) => {
+        setInterventionQuestion(question);
+        setIsInterventionOpen(true);
+        setActiveTask(prev => prev ? { ...prev, status: 'intervention_required' } : null);
+    }, [setActiveTask]);
+
+    const handleStepResult = useCallback((success: boolean, memory: ExecutionMemory, goalAchieved: boolean) => {
+        setActiveTask(prev => {
+            if (!prev) return null;
+            const index = prev.currentStepIndex;
+            const step = prev.steps[index];
+            if (success) {
+                return {
+                    ...prev,
+                    steps: prev.steps.map((s, i) => i === index ? { ...s, status: 'completed', detail: memory.reasoning } : s),
+                    currentStepIndex: index + 1,
+                    memory: [...prev.memory, memory],
+                    status: goalAchieved ? 'completed' : 'running'
+                };
+            }
+            const newRetryCount = (step.retryCount || 0) + 1;
+            if (newRetryCount >= MAX_RETRIES) {
+                addLog(`Step "${step.description}" failed ${MAX_RETRIES}x — intervention required.`, "warn");
+                triggerIntervention(`The step "${step.description}" keeps failing. Skip it, retry, or guide me?`);
+                return { 
+                    ...prev, 
+                    status: 'intervention_required', 
+                    steps: prev.steps.map((s, i) => i === index ? { ...s, status: 'failed', retryCount: newRetryCount, detail: memory.reasoning } : s) 
+                };
+            }
+            addLog(`Action failed — retrying (${newRetryCount}/${MAX_RETRIES}).`, "warn");
+            return { ...prev, steps: prev.steps.map((s, i) => i === index ? { ...s, status: 'pending', retryCount: newRetryCount, detail: memory.reasoning } : s) };
+        });
+    }, [addLog, triggerIntervention, setActiveTask]);
 
     const executeNextStep = useCallback(async () => {
         if (!activeTask || !db) return;
@@ -22,90 +92,96 @@ export function useMissionExecution(
         const step = activeTask.steps[index];
 
         if (!step) {
-            addLog("Verifying Finality...", "system");
-            return verifyGoalCompletion();
+            addLog("All steps complete — verifying goal...", "system");
+            const state = await captureGlobalContext();
+            const res = await fetchAISurvey({ goal: activeTask.prompt, memory: activeTask.memory, surveyContent: state });
+            if (res.isGoalAchieved) {
+                setActiveTask(prev => prev ? { ...prev, status: 'completed' } : null);
+                addLog("Mission Verified Complete", "success");
+            } else { addLog("Incomplete — re-shaping plan.", "system"); }
+            return;
         }
 
         try {
-            updateStepStatus(index, 'active');
+            setActiveTask(prev => prev ? { ...prev, steps: prev.steps.map((s, i) => i === index ? { ...s, status: 'active' } : s) } : null);
             const state = await captureGlobalContext();
-            const missionId = activeTask.missionContext || "";
-            const missionRef = doc(db, "missions", missionId);
 
-            const result = await fetchAISurvey({
+            // Reflective Surveying: Passing the entire mission history to Gemini 3.0
+            const surveyPrompt = {
                 goal: activeTask.prompt,
                 memory: activeTask.memory,
-                surveyContent: state,
+                currentStep: step.description,
+                surveyContent: state
+            };
+
+            const result = await fetchAISurvey(surveyPrompt);
+
+            // Update step detail with reasoning immediately
+            setActiveTask(prev => {
+                if (!prev) return null;
+                return {
+                    ...prev,
+                    steps: prev.steps.map((s, i) => i === index ? { ...s, detail: result.reasoning } : s)
+                };
             });
 
+            // Tactical Pivot Logic
+            if (result.tacticalUpdate?.newSteps) {
+                addLog(`Strategic Adjustment: ${result.reasoning}`, "system");
+                const now = Date.now();
+                const portedSteps = result.tacticalUpdate.newSteps.map((s, idx) => ({
+                    id: `pivot-${now}-${idx}`,
+                    description: s.description,
+                    type: s.type,
+                    target: s.target,
+                    value: s.value,
+                    status: 'pending',
+                    retryCount: 0,
+                    maxRetries: 3
+                }));
+
+                setActiveTask(prev => {
+                    if (!prev) return null;
+                    return {
+                        ...prev,
+                        steps: result.tacticalUpdate?.shouldResetIndex ? portedSteps : [...prev.steps.slice(0, index), ...portedSteps],
+                        currentStepIndex: result.tacticalUpdate?.shouldResetIndex ? 0 : index
+                    };
+                });
+                return; // Re-evaluate in next cycle
+            }
+
             if (result.action === 'ASK_USER' && result.confidence < 0.85) {
-                return triggerIntervention(result);
+                return triggerIntervention(result.parameters?.question || "Ambiguity detected.");
             }
 
             const action = step.target ? step.type : result.action;
             const params = step.target ? { selector: step.target, value: step.value } : result.parameters;
 
             const success = await executeAction(action.toLowerCase(), params);
-            const memory: ExecutionMemory = { step: step.description, result: success ? 'Success' : 'Failed' };
+            const memory: ExecutionMemory = { step: step.description, result: success ? 'Success' : 'Failed', reasoning: result.reasoning };
 
-            await recordStep(missionRef, memory);
+            const missionRef = doc(db, "missions", activeTask.missionContext || "");
+            await setDoc(missionRef, {
+                memory: arrayUnion({ ...memory, timestamp: Date.now() }),
+                updatedAt: Date.now()
+            }, { merge: true });
+
             handleStepResult(success, memory, result.isGoalAchieved);
         } catch (e: any) {
             addLog(`Error: ${e.message}`, "warn");
         }
-    }, [activeTask, db, addLog]);
+    }, [activeTask, db, addLog, handleStepResult, triggerIntervention]);
 
-    const verifyGoalCompletion = async () => {
+    const skipCurrentStep = useCallback(() => {
         if (!activeTask) return;
-        const state = await captureGlobalContext();
-        const res = await fetchAISurvey({ goal: activeTask.prompt, memory: activeTask.memory, surveyContent: state });
-        if (res.isGoalAchieved) {
-            setActiveTask(prev => prev ? { ...prev, status: 'completed' } : null);
-            addLog("Mission Verified Complete", "success");
-        } else {
-            addLog("Incomplete state — re-shaping plan.", "system");
-            return false; // Signal to re-plan
-        }
-    };
-
-    const updateStepStatus = (idx: number, status: any) => {
-        setActiveTask(prev => prev ? {
-            ...prev,
-            steps: prev.steps.map((s, i) => i === idx ? { ...s, status } : s)
-        } : null);
-    };
-
-    const triggerIntervention = (result: any) => {
-        setInterventionQuestion(result.parameters.question || "Strategic ambiguity.");
-        setPendingActionData(result);
-        setIsInterventionOpen(true);
-        setActiveTask(prev => prev ? { ...prev, status: 'intervention_required' } : null);
-    };
-
-    const recordStep = async (ref: any, memory: ExecutionMemory) => {
-        await setDoc(ref, {
-            memory: arrayUnion({ ...memory, timestamp: Date.now() }),
-            updatedAt: Date.now()
-        }, { merge: true });
-    };
-
-    const handleStepResult = (success: boolean, memory: ExecutionMemory, goalAchieved: boolean) => {
-        if (success) {
-            setActiveTask(prev => prev ? {
-                ...prev,
-                steps: prev.steps.map((s, i) => i === prev.currentStepIndex ? { ...s, status: 'completed' } : s),
-                currentStepIndex: prev.currentStepIndex + 1,
-                memory: [...prev.memory, memory],
-                status: goalAchieved ? 'completed' : 'running'
-            } : null);
-        } else {
-            addLog("Action failed — retrying.", "warn");
-        }
-    };
+        addLog(`Skipping: ${activeTask.steps[activeTask.currentStepIndex]?.description}`, "info");
+        setActiveTask(prev => prev ? { ...prev, currentStepIndex: prev.currentStepIndex + 1, status: 'running' } : null);
+        setIsInterventionOpen(false);
+    }, [activeTask, addLog, setActiveTask]);
 
     return {
-        executeNextStep, verifyGoalCompletion,
-        isInterventionOpen, setIsInterventionOpen,
-        interventionQuestion, pendingActionData
+        executeNextStep, isInterventionOpen, setIsInterventionOpen,
+        interventionQuestion, pendingActionData, skipCurrentStep
     };
 }

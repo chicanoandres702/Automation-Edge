@@ -85,7 +85,15 @@ export default function NexusControlCenter() {
           </div>
         </main>
 
-        <ControlModal isOpen={mission.isInterventionOpen} onOpenChange={mission.setIsInterventionOpen} question={mission.interventionQuestion} onConfirm={(r) => { mission.setActiveTask(prev => prev ? { ...prev, status: 'running', memory: [...prev.memory, { step: "OPERATOR", result: r }] } : null); mission.setIsInterventionOpen(false); }} onEraseActions={mission.eraseMissionPersistence} onReprompt={mission.handleStartMission} />
+        <ControlModal
+          isOpen={mission.isInterventionOpen}
+          onOpenChange={mission.setIsInterventionOpen}
+          question={mission.interventionQuestion}
+          onConfirm={(r, l) => { mission.setActiveTask(prev => prev ? { ...prev, status: 'running', memory: [...prev.memory, { step: "OPERATOR", result: r }] } : null); mission.setIsInterventionOpen(false); }}
+          onEraseActions={mission.eraseMissionPersistence}
+          onReprompt={mission.handleStartMission}
+          onSkip={mission.onSkip}
+        />
         <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
       </SidebarInset>
     </>

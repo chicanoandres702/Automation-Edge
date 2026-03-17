@@ -6,7 +6,7 @@
 const http = require('http');
 const WebSocket = require('ws');
 
-const host = process.argv[2] || 'http://127.0.0.1:9223';
+const host = process.argv[2] || 'http://127.0.0.1:9222';
 const maxRetries = 30;
 const delayMs = 1000;
 

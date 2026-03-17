@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import {
     Dialog,
     DialogContent,
@@ -22,6 +22,7 @@ interface ControlModalProps {
     onConfirm: (response: string, learnPattern: boolean) => void;
     onEraseActions: () => void;
     onReprompt: (newPrompt: string) => void;
+    onSkip?: () => void;
 }
 
 export function ControlModal({
@@ -31,7 +32,10 @@ export function ControlModal({
     onConfirm,
     onEraseActions,
     onReprompt,
+    onSkip,
 }: ControlModalProps) {
+    const titleId = useId();
+    const descriptionId = useId();
     const [response, setResponse] = useState("");
     const [repromptValue, setRepromptValue] = useState("");
     const [shouldLearn, setShouldLearn] = useState(true);
@@ -139,6 +143,16 @@ export function ControlModal({
                     >
                         Resume Mission
                     </Button>
+
+                    {onSkip && (
+                        <Button
+                            variant="ghost"
+                            className="w-full h-10 text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground"
+                            onClick={onSkip}
+                        >
+                            Skip Current Step
+                        </Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

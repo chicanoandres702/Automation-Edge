@@ -1,17 +1,17 @@
 export type AutomationStatus = 'idle' | 'running' | 'paused' | 'error' | 'completed' | 'seeking' | 'intervention_required' | 'retrying';
 
-export type ActionType = 
-  | 'click' 
-  | 'type' 
-  | 'scroll' 
-  | 'touch' 
-  | 'navigate' 
-  | 'wait' 
-  | 'extract' 
-  | 'switch-tab' 
-  | 'ask-user' 
-  | 'close-tab' 
-  | 'refresh' 
+export type ActionType =
+  | 'click'
+  | 'type'
+  | 'scroll'
+  | 'touch'
+  | 'navigate'
+  | 'wait'
+  | 'extract'
+  | 'switch-tab'
+  | 'ask-user'
+  | 'close-tab'
+  | 'refresh'
   | 'navigate-back';
 
 export interface AutomationStep {
@@ -41,6 +41,7 @@ export interface TabContext {
 export interface ExecutionMemory {
   step: string;
   result: 'Success' | 'Failed' | string;
+  reasoning?: string;
 }
 
 export interface AutomationTask {

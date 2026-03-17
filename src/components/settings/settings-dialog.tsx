@@ -34,6 +34,7 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
+   const settingsDialogTitleId = useId();
    const settingsDialogDescriptionId = useId();
    const { firestore: db, user, isUserLoading } = useFirebase();
 
@@ -148,9 +149,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
    return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-         <DialogContent aria-describedby={settingsDialogDescriptionId} className="max-w-2xl bg-background/95 backdrop-blur-3xl border-white/10 rounded-3xl p-0 overflow-hidden ring-1 ring-white/10 shadow-2xl">
+         <DialogContent className="max-w-2xl bg-background/95 backdrop-blur-3xl border-white/10 rounded-3xl p-0 overflow-hidden ring-1 ring-white/10 shadow-2xl">
             <DialogTitle className="sr-only">Nexus Fleet Settings</DialogTitle>
-            <DialogDescription id={settingsDialogDescriptionId} className="sr-only">
+            <DialogDescription className="sr-only">
                Configure Nexus agent autonomy, shared tool infrastructure, and learned success patterns.
             </DialogDescription>
             <div className="flex h-[550px]">

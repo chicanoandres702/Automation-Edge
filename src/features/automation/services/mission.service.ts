@@ -1,25 +1,25 @@
 import { doc, setDoc, getDoc, collection, getDocs, deleteDoc } from "firebase/firestore";
 import { Firestore } from "firebase/firestore";
 
+import { callGemini, AUTOMATION_SYSTEM_PROMPT, SURVEY_SYSTEM_PROMPT, getAIKey } from "@/lib/ai-client";
+import { executeAction } from "@/lib/dom-actions";
+
 export async function fetchAIPlan(goal: string, apiKey: string | null, sharedToolHostnames: string[] = []) {
-    const payload = { prompt: goal, apiKey, sharedToolHostnames };
-    const resp = await fetch('http://localhost:9002/api/generate-automation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-    });
-    if (!resp.ok) throw new Error('AI planner failed');
-    return await resp.json();
+    const key = apiKey || await getAIKey();
+    if (!key) throw new Error("API Key required for standalone execution. Please check the 'Integrations' tab in Settings.");
+
+    console.log('[Mission-Service] Generating Standalone Plan...');
+    const prompt = `Objective: ${goal}\nShared Tools: ${sharedToolHostnames.join(', ')}`;
+    return await callGemini(prompt, key, AUTOMATION_SYSTEM_PROMPT);
 }
 
 export async function fetchAISurvey(input: any) {
-    const resp = await fetch('http://localhost:9002/api/contextual-survey', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
-    });
-    if (!resp.ok) throw new Error('AI search failed');
-    return await resp.json();
+    const apiKey = await getAIKey();
+    if (!apiKey) throw new Error("API Key required for standalone execution. Please check the 'Integrations' tab in Settings.");
+
+    console.log('[Mission-Service] Performing Standalone Contextual Survey...');
+    const prompt = JSON.stringify(input);
+    return await callGemini(prompt, apiKey, SURVEY_SYSTEM_PROMPT);
 }
 
 export async function getSharedToolHostnames(db: Firestore) {
