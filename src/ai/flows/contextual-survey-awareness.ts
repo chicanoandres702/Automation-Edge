@@ -27,15 +27,15 @@ export type ContextualSurveyAwarenessInput = z.infer<typeof ContextualSurveyAwar
 
 const ContextualSurveyAwarenessOutputSchema = z.object({
   action: z.enum([
-    'CLICK', 
-    'TYPE', 
-    'SCROLL', 
-    'WAIT', 
-    'SWITCH_TAB', 
-    'CLOSE_TAB', 
-    'ASK_USER', 
-    'NAVIGATE', 
-    'REFRESH', 
+    'CLICK',
+    'TYPE',
+    'SCROLL',
+    'WAIT',
+    'SWITCH_TAB',
+    'CLOSE_TAB',
+    'ASK_USER',
+    'NAVIGATE',
+    'REFRESH',
     'NAVIGATE_BACK'
   ]),
   parameters: z.object({
@@ -66,7 +66,9 @@ const prompt = ai.definePrompt({
 ### ADAPTIVE CONFIRMATION PROTOCOL
 1. **Learn & Bypass**: Compare the current 'surveyContent' with 'learnedPatterns'. If you see a visual indicator (text, status, or disappeared element) that matches a success pattern, bypass ASK_USER. Set confidence=1.0.
 2. **Visual Evidence**: Look for banners like "Submitted", "Thank You", or "Step Complete". If found, set isGoalAchieved=true and describe the pattern in 'successPatternIdentified'.
-3. **Intervention**: Only use ASK_USER if the path forward is genuinely ambiguous or high-risk (e.g. permanent deletion).
+3. **NO GUESSED URLS**: Never guess deep-links. If navigating is required, prefer finding a link on the page. Only use raw URLs for base domains.
+4. **VERIFY ACTIONS**: Every action taken must be followed by a mental verification in the next survey cycle. Look for state changes.
+5. **Intervention**: Only use ASK_USER if the path forward is genuinely ambiguous or high-risk.
 
 Goal: {{{goal}}}
 

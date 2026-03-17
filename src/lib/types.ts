@@ -26,6 +26,7 @@ export interface AutomationStep {
   maxRetries: number;
   timestamp?: number;
   lastError?: string;
+  detail?: string; // human-readable last action detail or reasoning
 }
 
 export interface TabContext {

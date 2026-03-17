@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { onAuthStateChanged, type User } from 'firebase/auth';
+import type { User } from 'firebase/auth';
 import { useFirebase } from '../provider';
 
 export function useUser() {
@@ -11,10 +11,19 @@ export function useUser() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
+    let unsub: (() => void) | null = null;
+
+    (async () => {
+      const mod = await import('firebase/auth');
+      unsub = mod.onAuthStateChanged(auth, (u: User | null) => {
+        setUser(u);
+        setLoading(false);
+      });
+    })();
+
+    return () => {
+      if (unsub) try { unsub(); } catch (_) {}
+    };
   }, [auth]);
 
   return { user, loading };

@@ -5,8 +5,8 @@
  * Updated to support exhaustive "Complete All" discovery logic.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 
 const GenerateAutomationFromPromptInputSchema = z.object({
   prompt: z.string().describe('The user objective.'),
@@ -17,8 +17,15 @@ const GenerateAutomationFromPromptInputSchema = z.object({
 export type GenerateAutomationFromPromptInput = z.infer<typeof GenerateAutomationFromPromptInputSchema>;
 
 const GenerateAutomationFromPromptOutputSchema = z.object({
-  workflowSteps: z.array(z.string()),
+  steps: z.array(z.object({
+    description: z.string().describe('Human readable description of the step.'),
+    type: z.enum(['click', 'type', 'scroll', 'navigate', 'wait', 'extract', 'ask-user', 'refresh']).describe('The logical action to perform.'),
+    target: z.string().optional().describe('CSS selector or XPath if the action requires a target.'),
+    value: z.string().optional().describe('Text to type or URL to navigate to.'),
+    maxRetries: z.number().optional().default(3).describe('Maximum retry attempts for this node.')
+  })).describe('Structured workflow steps for the browser agent.'),
   reasoning: z.string(),
+  // ... (keeping other fields for compatibility)
   estimatedRisk: z.enum(['low', 'medium', 'high']),
   neuralLock: z.object({
     missionId: z.string().optional().describe('Extracted identifier (e.g., SWK-2400) if found.'),
@@ -39,26 +46,33 @@ const automationPrompt = ai.definePrompt({
   name: 'generateAutomationPrompt',
   input: { schema: GenerateAutomationFromPromptInputSchema },
   output: { schema: GenerateAutomationFromPromptOutputSchema },
-  prompt: `You are an elite AI Browser Agent specializing in Academic and Professional automation.
+  prompt: `You are an elite AI Browser Agent. Your task is to generate a granular, tactical mission plan. 
 
-### NEURAL LOCK & EXHAUSTIVE DISCOVERY
-1. **Exhaustive Mode**: If the user prompt is broad (e.g., "Complete all homework", "Finish assignments"), your FIRST steps MUST be:
-   - "Navigate to Dashboard"
-   - "Survey for All Pending Tasks"
-   - "Inventory Assignments"
-2. **Identify Mission Context**: Look for course codes (e.g., SWK-2400) or project names.
-3. **Handle Ambiguity**: If the specific mission is unclear, set isAmbiguous to true. Prioritize "Discovery" steps to find the active course.
-4. **Platform Tiering**: 
-   - **Shared Tool**: Universal platforms (Google Docs, Microsoft 365, VitalSource). Mark 'shared_tool'.
-   - **Mission Specific**: Project-specific portals (Capella Courseroom). Mark 'mission_specific'.
+**STRICT ARCHITECTURAL RULES:**
+1.  **NO BOILERPLATE:** Never use generic "Survey" or "Inventory" strings unless they are strictly necessary for a broad discovery goal.
+2.  **BLACK-LISTED SEQUENCE:** Do not use the sequence "Navigate to Dashboard" -> "Survey for All Pending Tasks" -> "Inventory Assignments" or anything similar.
+3.  **NO GUESSED URLS:** Never guess deep-links (e.g., /dashboard). Navigate to the domain root and use 'extract' + 'click' to discover the correct path via the UI.
+4.  **VERIFICATION MANDATORY:** Every primary action (navigate, click, type) MUST be followed by a verification step (type: 'extract') to confirm the expected state changed or the target element appeared.
+5.  **SPECIFICITY:** Always look for direct actionable paths. If the goal involves an assignment, use specific steps like "Identify pending assignments", "Extract requirements", "Open editor".
+6.  **ACTION TYPES:** Use 'click', 'type', 'extract', 'navigate' with surgical precision.
+7.  **CHAIN OF THOUGHT:** In your \`reasoning\`, first analyze the complexity, then explain why the generated steps are the most direct path to the goal.
 
-User Objective: {{{prompt}}}
+**THINKING PROCESS & EXAMPLES:**
+- **Goal: "Login to Google"** 
+  -> [navigate (google.com)] -> [extract (login field)] -> [type (email)] -> [click (next)] -> [extract (password field)] -> [type (password)] -> [click (signin)] -> [extract (inbox)].
+- **Goal: "Complete SWK-2400 Assignment"**
+  -> [navigate (portal root)] -> [extract (dashboard link)] -> [click (dashboard)] -> [extract (course links)] -> [click (SWK-2400)] -> [extract (assignment requirements)] -> [click (open editor)] -> [extract (editor state)].
+- **Goal: "Search for Shoes"** 
+  -> [navigate (shop)] -> [extract (search box)] -> [type (shoes)] -> [click (search button)] -> [extract (result items)].
+
+**USER OBJECTIVE:**
+{{{prompt}}}
 
 {{#if missionContext}}
-Current Active Lock: {{{missionContext}}}
+**Current Active Lock:** {{{missionContext}}}
 {{/if}}
 
-Generate a tactical workflow that ensures NO task is left behind. Use Discovery steps to build an internal inventory.`,
+Generate the structured mission plans. NO GUESSED URLS. EVERY STEP VERIFIED. Be surgically precise.`,
 });
 
 export async function generateAutomationFromPrompt(input: GenerateAutomationFromPromptInput): Promise<GenerateAutomationFromPromptOutput> {

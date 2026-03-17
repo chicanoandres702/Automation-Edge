@@ -150,6 +150,14 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
                           </div>
 
                           <div className="space-y-2.5 min-w-0">
+                              {isActive && (
+                                <div className="absolute right-14 top-6 pointer-events-none">
+                                  <MousePointer2 className={cn(
+                                    "w-5 h-5 text-primary/80 pseudo-cursor",
+                                    step.type === 'click' ? 'pseudo-cursor-click' : step.type === 'type' ? 'pseudo-cursor-type' : ''
+                                  )} />
+                                </div>
+                              )}
                             <div className="flex items-center gap-2">
                               <div className={cn(
                                 "flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[8px] font-black uppercase tracking-tight",
@@ -171,6 +179,9 @@ export function AgentVisualizer({ steps, currentStepIndex, status, onIntervene, 
                             )}>
                               {step.description}
                             </p>
+                            {step.detail && (
+                              <p className="text-[11px] font-mono text-muted-foreground/70 mt-1">{step.detail}</p>
+                            )}
                             
                             {needsReview && isCurrent && onIntervene && (
                                <Button 

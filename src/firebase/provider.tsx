@@ -1,10 +1,10 @@
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
-import { FirebaseApp } from 'firebase/app';
-import { Firestore } from 'firebase/firestore';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import type { FirebaseApp } from 'firebase/app';
+import type { Firestore } from 'firebase/firestore';
+import type { Auth, User } from 'firebase/auth';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -67,27 +67,44 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     userError: null,
   });
 
-  // Effect to subscribe to Firebase auth state changes
+  // Effect to subscribe to Firebase auth state changes. We dynamically import
+  // the `onAuthStateChanged` helper so that the Firebase Auth package is not
+  // pulled into server bundles during static build.
   useEffect(() => {
-    if (!auth) { // If no Auth service instance, cannot determine user state
-      setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
+    if (!auth) {
+      setUserAuthState({ user: null, isUserLoading: false, userError: new Error('Auth service not provided.') });
       return;
     }
 
-    setUserAuthState({ user: null, isUserLoading: true, userError: null }); // Reset on auth instance change
+    setUserAuthState({ user: null, isUserLoading: true, userError: null });
 
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      (firebaseUser) => { // Auth state determined
-        setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
-      },
-      (error) => { // Auth listener error
-        console.error("FirebaseProvider: onAuthStateChanged error:", error);
-        setUserAuthState({ user: null, isUserLoading: false, userError: error });
+    let unsub: (() => void) | null = null;
+
+    (async () => {
+      try {
+        const mod = await import('firebase/auth');
+        const unsubscribe = mod.onAuthStateChanged(
+          auth,
+          (firebaseUser: User | null) => {
+            setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
+          },
+          (error: any) => {
+            console.error('FirebaseProvider: onAuthStateChanged error:', error);
+            setUserAuthState({ user: null, isUserLoading: false, userError: error });
+          }
+        );
+
+        unsub = unsubscribe as unknown as () => void;
+      } catch (err) {
+        console.error('FirebaseProvider: failed to load firebase/auth for onAuthStateChanged', err);
+        setUserAuthState({ user: null, isUserLoading: false, userError: err as Error });
       }
-    );
-    return () => unsubscribe(); // Cleanup
-  }, [auth]); // Depends on the auth instance
+    })();
+
+    return () => {
+      if (unsub) try { unsub(); } catch (e) { /* ignore */ }
+    };
+  }, [auth]);
 
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {

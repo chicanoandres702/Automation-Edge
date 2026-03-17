@@ -1,5 +1,5 @@
-'use client';
-import { getAuth, type User } from 'firebase/auth';
+"use client";
+import type { User } from 'firebase/auth';
 
 type SecurityRuleContext = {
   path: string;
@@ -75,18 +75,12 @@ function buildAuthObject(currentUser: User | null): FirebaseAuthObject | null {
  * @returns A structured request object.
  */
 function buildRequestObject(context: SecurityRuleContext): SecurityRuleRequest {
-  let authObject: FirebaseAuthObject | null = null;
-  try {
-    // Safely attempt to get the current user.
-    const firebaseAuth = getAuth();
-    const currentUser = firebaseAuth.currentUser;
-    if (currentUser) {
-      authObject = buildAuthObject(currentUser);
-    }
-  } catch {
-    // This will catch errors if the Firebase app is not yet initialized.
-    // In this case, we'll proceed without auth information.
-  }
+  // Avoid importing firebase/auth at module load time (which can trigger
+  // bundling and initialization during server builds). We do not attempt to
+  // synchronously retrieve the currently authenticated user here. If an
+  // authenticated user is required, callers should provide that information
+  // explicitly.
+  const authObject: FirebaseAuthObject | null = null;
 
   return {
     auth: authObject,
