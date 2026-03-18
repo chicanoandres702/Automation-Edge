@@ -7,12 +7,12 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+// description will be provided via DialogContent `description` prop
 import { BrainCircuit, Trash2, Send, RotateCcw } from "lucide-react";
 
 interface ControlModalProps {
@@ -42,15 +42,15 @@ export function ControlModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-background/95 border-primary/20 backdrop-blur-3xl max-w-md rounded-3xl p-8 ring-1 ring-primary/20 shadow-2xl">
+            <DialogContent
+                srDescription={"Operator intervention and mission control."}
+                className="bg-background/95 border-primary/20 backdrop-blur-3xl max-w-md rounded-3xl p-8 ring-1 ring-primary/20 shadow-2xl"
+            >
                 <DialogHeader className="mb-6">
                     <DialogTitle className="text-primary font-black uppercase tracking-widest text-xs flex items-center gap-3">
                         <BrainCircuit className="w-5 h-5" />
                         Neural Control Hub
                     </DialogTitle>
-                    <DialogDescription className="sr-only">
-                        Operator intervention and mission control.
-                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-6">

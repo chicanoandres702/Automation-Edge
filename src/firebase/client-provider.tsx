@@ -3,6 +3,7 @@
 import React, { useEffect, useState, type ReactNode } from 'react';
 import { FirebaseProvider } from './provider';
 import { firebaseConfig } from './config';
+import { initTheme } from '@/lib/theme';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
@@ -12,6 +13,9 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
   const [sdks, setSdks] = useState<null | { firebaseApp: any; auth: any; firestore: any }>(null);
 
   useEffect(() => {
+    // Apply stored theme as early as possible on client mount
+    try { initTheme().catch(() => {}); } catch (e) {}
+
     let mounted = true;
 
     (async () => {

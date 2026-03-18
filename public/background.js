@@ -75,6 +75,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     } else if (msg?.type === 'SET_AUTONOMOUS') {
       await chrome.storage.local.set({ autonomousEnabled: !!msg.enabled, autonomousPrompt: msg.prompt || '' });
       sendResponse({ ok: true });
+    } else if (msg?.type === 'TELEMETRY') {
+      try {
+        const existing = await new Promise(res => chrome.storage.local.get(['telemetryLogs'], r => res(r.telemetryLogs || [])));
+        const logs = Array.isArray(existing) ? existing : [];
+        logs.push(Object.assign({ ts: Date.now() }, msg.data || {}));
+        // keep last 500 entries
+        while (logs.length > 500) logs.shift();
+        await chrome.storage.local.set({ telemetryLogs: logs });
+        sendResponse({ ok: true });
+      } catch (e) {
+        sendResponse({ ok: false });
+      }
     }
   })();
   return true;

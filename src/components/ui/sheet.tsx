@@ -3,6 +3,7 @@
 import * as React from "react"
 import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { cva, type VariantProps } from "class-variance-authority"
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -51,27 +52,44 @@ const sheetVariants = cva(
 
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+    VariantProps<typeof sheetVariants> {
+  srTitle?: React.ReactNode
+  srDescription?: React.ReactNode
+}
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(sheetVariants({ side }), className)}
-      {...props}
-    >
-      {children}
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </SheetPrimitive.Close>
-    </SheetPrimitive.Content>
-  </SheetPortal>
-))
+>(({ side = "right", className, children, srTitle, srDescription, ...props }, ref) => {
+  const sanitizedProps: Record<string, any> = { ...props } as Record<string, any>;
+  if ('title' in sanitizedProps) delete sanitizedProps.title;
+  if ('description' in sanitizedProps) delete sanitizedProps.description;
+  if (sanitizedProps['aria-describedby'] === undefined) delete sanitizedProps['aria-describedby'];
+
+  return (
+    <SheetPortal>
+      <SheetOverlay />
+      <SheetPrimitive.Content
+        ref={ref}
+        className={cn(sheetVariants({ side }), className)}
+        {...(sanitizedProps as any)}
+      >
+        {/* Hidden Title/Description fallback to satisfy Radix accessibility
+            expectations when callers don't provide them. Use empty string
+            fallbacks to avoid forwarding undefined to aria attributes. */}
+        <VisuallyHidden>
+          <SheetPrimitive.Title>{srTitle ?? ""}</SheetPrimitive.Title>
+          <SheetPrimitive.Description>{srDescription ?? ""}</SheetPrimitive.Description>
+        </VisuallyHidden>
+        {children}
+        <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </SheetPrimitive.Close>
+      </SheetPrimitive.Content>
+    </SheetPortal>
+  );
+})
 SheetContent.displayName = SheetPrimitive.Content.displayName
 
 const SheetHeader = ({

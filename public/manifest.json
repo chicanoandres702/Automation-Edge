@@ -10,7 +10,8 @@
     "tabs",
     "windows",
     "storage",
-    "alarms"
+    "alarms",
+    "identity"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -24,5 +25,17 @@
   },
   "action": {
     "default_title": "Open Automaton Sidebar"
+  }
+
+  /*
+    NOTE: To enable Chrome Identity-based Google sign-in you MUST add a valid
+    OAuth2 client ID here. Replace the client_id below with your app's
+    OAuth Client ID (typically of type "Chrome App" or an OAuth client
+    configured for your extension). Without a valid client_id the
+    chrome.identity.getAuthToken flow will not work.
+  */
+  ,"oauth2": {
+    "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [ "openid", "email", "profile" ]
   }
 }

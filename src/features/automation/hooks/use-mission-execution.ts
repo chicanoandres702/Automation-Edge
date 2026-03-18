@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { doc, arrayUnion, setDoc } from "firebase/firestore";
 import { Firestore } from "firebase/firestore";
-import { AutomationTask, ExecutionMemory } from "@/lib/types";
+import { AutomationTask, ExecutionMemory, AutomationStep, ActionType } from "@/lib/types";
 import { captureGlobalContext } from "@/lib/dom-traversal";
 import { executeAction } from "@/lib/dom-actions";
 import { updateBrowserOverlay } from "@/lib/dom-overlay";
@@ -129,16 +129,16 @@ export function useMissionExecution(
             if (result.tacticalUpdate?.newSteps) {
                 addLog(`Strategic Adjustment: ${result.reasoning}`, "system");
                 const now = Date.now();
-                const portedSteps = result.tacticalUpdate.newSteps.map((s, idx) => ({
+                const portedSteps: AutomationStep[] = result.tacticalUpdate.newSteps.map((s, idx) => ({
                     id: `pivot-${now}-${idx}`,
-                    description: s.description,
-                    type: s.type,
+                    description: s.description as string,
+                    type: s.type as ActionType,
                     target: s.target,
                     value: s.value,
                     status: 'pending',
                     retryCount: 0,
                     maxRetries: 3
-                }));
+                } as AutomationStep));
 
                 setActiveTask(prev => {
                     if (!prev) return null;
@@ -151,12 +151,17 @@ export function useMissionExecution(
                 return; // Re-evaluate in next cycle
             }
 
-            if (result.action === 'ASK_USER' && result.confidence < 0.85) {
+            if (result.action === 'ASK_USER' && (result.confidence ?? 0) < 0.85) {
                 return triggerIntervention(result.parameters?.question || "Ambiguity detected.");
             }
 
-            const action = step.target ? step.type : result.action;
+            const action = (step.target ? step.type : (result.action ?? "")) as string;
             const params = step.target ? { selector: step.target, value: step.value } : result.parameters;
+
+            if (!action) {
+                addLog("No action provided by AI or step; skipping.", "warn");
+                return;
+            }
 
             const success = await executeAction(action.toLowerCase(), params);
             const memory: ExecutionMemory = { step: step.description, result: success ? 'Success' : 'Failed', reasoning: result.reasoning };
@@ -167,9 +172,40 @@ export function useMissionExecution(
                 updatedAt: Date.now()
             }, { merge: true });
 
-            handleStepResult(success, memory, result.isGoalAchieved);
+            handleStepResult(success, memory, !!result.isGoalAchieved);
         } catch (e: any) {
-            addLog(`Error: ${e.message}`, "warn");
+            if (e?.name === 'AutonomyDisabledError') {
+                // Operator approval required — open the intervention modal and
+                // pause the mission so the human can approve the AI call.
+                addLog('Autonomous AI blocked — operator approval required to continue.', 'warn');
+                setInterventionQuestion(e?.message || 'Operator approval required to perform this AI action.');
+                setIsInterventionOpen(true);
+                setActiveTask(prev => prev ? { ...prev, status: 'intervention_required' } : null);
+                return;
+            }
+
+            if (e.name === 'RateLimitError') {
+                let waitSeconds = Math.ceil(e.retryAfter || 15);
+                addLog(`⚠️ API Quota Exceeded. Cooldown initiated. Resuming in ${waitSeconds}s...`, "warn");
+                
+                // Temporarily pause the mission to prevent run-away loops
+                setActiveTask(prev => prev ? { ...prev, status: 'paused' } : null);
+                
+                const countdownInterval = setInterval(() => {
+                    waitSeconds -= 1;
+                    if (waitSeconds <= 0) {
+                        clearInterval(countdownInterval);
+                        addLog(`Cooldown complete. Resuming mission...`, "success");
+                        setActiveTask(prev => prev ? { ...prev, status: 'running' } : null);
+                    } else if (waitSeconds % 5 === 0 || waitSeconds <= 3) {
+                         // Only log every 5s or the last 3s to avoid spam
+                         addLog(`⏳ Cooldown: ${waitSeconds}s remaining...`, "system");
+                    }
+                }, 1000);
+                
+            } else {
+                addLog(`Error: ${e.message}`, "warn");
+            }
         }
     }, [activeTask, db, addLog, handleStepResult, triggerIntervention]);
 

@@ -5,8 +5,11 @@ export async function updateBrowserOverlay(step: string | null, status: string =
   if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.runtime?.id) return;
 
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || tab.url?.startsWith('chrome://')) return;
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const url = tab?.url || '';
+  // Avoid injecting into internal or protected pages where scripting is disallowed
+  const blockedPrefixes = ['chrome://', 'edge://', 'about:', 'view-source:', 'file://', 'filesystem:', 'devtools://', 'extension://', 'chrome-extension://', 'moz-extension://', 'safari-extension://'];
+  if (!tab?.id || blockedPrefixes.some(p => url.startsWith(p))) return;
 
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
@@ -56,8 +59,14 @@ export async function updateBrowserOverlay(step: string | null, status: string =
 
           const controls = document.createElement('div');
           controls.style.cssText = 'display: flex; gap: 8px;';
+
+          // Basic play / pause svgs so the control always renders on first paint.
+          const playSVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14l11-7z"/></svg>';
+          const pauseSVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+
           const icons: Record<string, string> = {
             'back': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/></svg>',
+            'play-pause': stat === 'running' ? pauseSVG : playSVG,
             'next': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m13 17 5-5-5-5M6 17l5-5-5-5"/></svg>',
             'stop': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>'
           };
@@ -65,7 +74,9 @@ export async function updateBrowserOverlay(step: string | null, status: string =
           ['back', 'play-pause', 'next', 'stop'].forEach(id => {
             const btn = document.createElement('button');
             btn.id = ID + '-' + id;
-            btn.title = id.charAt(0).toUpperCase() + id.slice(1);
+            btn.title = id.charAt(0).toUpperCase() + id.slice(1).replace('-', ' ');
+            btn.setAttribute('type', 'button');
+            btn.setAttribute('aria-label', btn.title);
             btn.style.cssText = 'background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; width: 32px; height: 32px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;';
             btn.innerHTML = icons[id] || '';
             btn.onclick = () => chrome.runtime.sendMessage({ type: 'MISSION_CONTROL', action: id.toUpperCase() });
@@ -91,7 +102,13 @@ export async function updateBrowserOverlay(step: string | null, status: string =
         if (pulse) { pulse.style.background = isRun ? '#0ea5e9' : '#f59e0b'; pulse.className = isRun ? 'pulse' : ''; }
       }
     });
-  } catch (e) {
+  } catch (e: any) {
+    const msg = String(e?.message || e);
+    // Common browser error when attempting to inject into protected pages — suppress noisy warnings
+    if (/chrome:\/\//i.test(msg) || /edge:\/\//i.test(msg) || /Cannot access/i.test(msg) || /Access is denied/i.test(msg)) {
+      console.debug('[HUD] Sync skipped (protected page):', msg);
+      return;
+    }
     console.warn('[HUD] Sync failed', e);
   }
 }

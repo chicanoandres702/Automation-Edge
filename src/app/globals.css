@@ -36,6 +36,39 @@
   }
 }
 
+/* Black / Red theme variant */
+.theme-black-red {
+  --background: 0 0% 3%;
+  --foreground: 0 0% 98%;
+  --card: 0 0% 6%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 3%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 348 95% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 8%;
+  --secondary-foreground: 0 0% 84%;
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 70%;
+  --accent: 348 92% 40%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 350 80% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 12%;
+  --input: 0 0% 10%;
+  --ring: 348 90% 55%;
+  --radius: 0.5rem;
+
+  --sidebar-background: 0 0% 6%;
+  --sidebar-foreground: 0 0% 92%;
+  --sidebar-primary: 348 95% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 348 92% 20%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 0 0% 12%;
+  --sidebar-ring: 348 90% 55%;
+}
+
 @layer base {
   * {
     @apply border-border;

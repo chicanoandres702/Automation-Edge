@@ -10,7 +10,10 @@ export async function fetchAIPlan(goal: string, apiKey: string | null, sharedToo
 
     console.log('[Mission-Service] Generating Standalone Plan...');
     const prompt = `Objective: ${goal}\nShared Tools: ${sharedToolHostnames.join(', ')}`;
-    return await callGemini(prompt, key, AUTOMATION_SYSTEM_PROMPT);
+    // This is a user-initiated standalone plan generation; mark as such so
+    // the AI client allows the request even if autonomous background calls
+    // are disabled in settings.
+    return await callGemini(prompt, key, AUTOMATION_SYSTEM_PROMPT, 2, { userInitiated: true });
 }
 
 export async function fetchAISurvey(input: any) {

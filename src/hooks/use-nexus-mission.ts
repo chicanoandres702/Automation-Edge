@@ -64,7 +64,19 @@ export function useNexusMission() {
     const handleStartMission = async (customPrompt?: string) => {
         const finalPrompt = customPrompt || prompt;
         if (!finalPrompt.trim() || !user || !db) {
-            console.log('[Mission] Initiation aborted: Missing prompt, user, or db');
+            // Provide a clearer diagnostic so callers and users know which precondition is missing
+            if (!finalPrompt.trim()) {
+                console.log('[Mission] Initiation aborted: Missing prompt');
+                try { toast({ title: 'Enter a prompt', description: 'Please provide a tactical objective before initiating.' }); } catch (e) { /* ignore */ }
+            } else if (!user) {
+                console.log('[Mission] Initiation aborted: Missing authenticated user');
+                try { toast({ title: 'Sign in required', description: 'Please sign in to start missions.' }); } catch (e) { /* ignore */ }
+            } else if (!db) {
+                console.log('[Mission] Initiation aborted: Firestore not available');
+                try { toast({ title: 'Database unavailable', description: 'Firestore not initialized yet. Try again shortly.' }); } catch (e) { /* ignore */ }
+            } else {
+                console.log('[Mission] Initiation aborted: Missing prompt, user, or db');
+            }
             return;
         }
         setIsGenerating(true);
@@ -100,7 +112,11 @@ export function useNexusMission() {
             setPrompt("");
         } catch (error: any) {
             console.error('[Mission] Critical failure during initiation:', error);
-            addLog(`AI unavailable: ${error.message}`, "warn");
+            if (error.name === 'RateLimitError') {
+                addLog(`⚠️ API Quota Exceeded. Please wait ${Math.ceil(error.retryAfter || 15)}s before initiating again.`, "warn");
+            } else {
+                addLog(`AI unavailable: ${error.message}`, "warn");
+            }
         } finally {
             setIsGenerating(false);
         }

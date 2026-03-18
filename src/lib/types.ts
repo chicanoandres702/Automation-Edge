@@ -6,6 +6,8 @@ export type ActionType =
   | 'scroll'
   | 'touch'
   | 'navigate'
+  | 'go_to_url'
+  | 'drag'
   | 'wait'
   | 'extract'
   | 'switch-tab'
