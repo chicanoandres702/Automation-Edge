@@ -45,14 +45,14 @@ export async function captureGlobalContext(): Promise<string> {
             const res = r.result as any;
             fullContext += `\n[Tab: ${tab.title} Frame ${idx}] Hash: ${res.stateHash}\nURL: ${res.url}\nText: ${res.text}\nVisualMarkers: ${res.indicators}\nActiveForms: ${res.forms}\n`;
           });
-        } catch (e) {
+        } catch {
           fullContext += `\n[Access Denied]\n`;
         }
       }
     }
 
     return fullContext;
-  } catch (err) {
+  } catch {
     return "Error scanning environment.";
   }
 }
@@ -118,7 +118,7 @@ export async function executeAction(action: string, params: any): Promise<boolea
                 cursor.remove();
                 resolve(true);
               }, 900);
-            } catch (err) {
+            } catch {
               resolve(false);
             }
           });
@@ -173,7 +173,7 @@ export async function executeAction(action: string, params: any): Promise<boolea
                   setTimeout(() => { cursor.remove(); resolve(true); }, 300);
                 }
               }, 60);
-            } catch (err) {
+            } catch {
               resolve(false);
             }
           });
@@ -186,7 +186,7 @@ export async function executeAction(action: string, params: any): Promise<boolea
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       args: [normAction, params],
-      func: (act, p) => {
+      func: (act, _p) => {
         if (act === 'SCROLL') {
           window.scrollBy(0, 500);
         }

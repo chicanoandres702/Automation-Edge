@@ -29,7 +29,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
       let app: any;
       try {
         app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-      } catch (err) {
+      } catch {
         // In case of any errors, fall back to explicit initialization.
         app = initializeApp(firebaseConfig);
       }

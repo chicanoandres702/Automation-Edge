@@ -73,7 +73,7 @@ export function useDoc<T = any>(
           setError(null);
           setIsLoading(false);
         },
-        (error: FirestoreError) => {
+        (_error: FirestoreError) => {
           const contextualError = new FirestorePermissionError({
             operation: 'get',
             path: (memoizedDocRef as any).path,
@@ -90,7 +90,7 @@ export function useDoc<T = any>(
     })();
 
     return () => {
-      if (unsubscribe) try { unsubscribe(); } catch (_) {}
+      if (unsubscribe) try { unsubscribe(); } catch { }
     };
   }, [memoizedDocRef]); // Re-run if the memoizedDocRef changes.
 

@@ -11,7 +11,7 @@ import {FirestorePermissionError} from '@/firebase/errors';
 export function setDocumentNonBlocking(docRef: DocumentReference, data: any, options: SetOptions) {
   void import('firebase/firestore')
     .then((m) => m.setDoc(docRef, data, options))
-    .catch((error) => {
+    .catch(() => {
       errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({
@@ -34,7 +34,7 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
   // Return a promise that resolves to the new doc ref or undefined on error.
   return import('firebase/firestore')
     .then((m) => m.addDoc(colRef, data))
-    .catch((error) => {
+    .catch(() => {
       errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({
@@ -55,7 +55,7 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
 export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) {
   void import('firebase/firestore')
     .then((m) => m.updateDoc(docRef, data))
-    .catch((error) => {
+    .catch(() => {
       errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({
@@ -75,7 +75,7 @@ export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) 
 export function deleteDocumentNonBlocking(docRef: DocumentReference) {
   void import('firebase/firestore')
     .then((m) => m.deleteDoc(docRef))
-    .catch((error) => {
+    .catch(() => {
       errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({

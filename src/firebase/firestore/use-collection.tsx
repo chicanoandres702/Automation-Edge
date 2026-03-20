@@ -88,7 +88,7 @@ export function useCollection<T = any>(
           setError(null);
           setIsLoading(false);
         },
-        (error: FirestoreError) => {
+        (_error: FirestoreError) => {
           const path: string =
             (memoizedTargetRefOrQuery as any).type === 'collection'
               ? (memoizedTargetRefOrQuery as any).path
@@ -110,7 +110,7 @@ export function useCollection<T = any>(
     })();
 
     return () => {
-      if (unsubscribe) try { unsubscribe(); } catch (_) {}
+      if (unsubscribe) try { unsubscribe(); } catch { }
     };
   }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {

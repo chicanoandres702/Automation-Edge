@@ -22,7 +22,7 @@ export function useUser() {
     })();
 
     return () => {
-      if (unsub) try { unsub(); } catch (_) {}
+      if (unsub) try { unsub(); } catch { }
     };
   }, [auth]);
 

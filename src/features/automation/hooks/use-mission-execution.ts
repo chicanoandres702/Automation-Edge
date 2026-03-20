@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { doc, getDoc, arrayUnion, setDoc } from "firebase/firestore";
+import { doc, arrayUnion, setDoc } from "firebase/firestore";
 import { Firestore } from "firebase/firestore";
 import { AutomationTask, ExecutionMemory } from "@/lib/types";
 import { captureGlobalContext, executeAction } from "@/lib/dom-traversal";
@@ -10,11 +10,60 @@ export function useMissionExecution(
     setActiveTask: React.Dispatch<React.SetStateAction<AutomationTask | null>>,
     db: Firestore | null,
     addLog: (msg: string, type?: any) => void,
-    manualMode: boolean
+    _manualMode: boolean
 ) {
     const [isInterventionOpen, setIsInterventionOpen] = useState(false);
     const [interventionQuestion, setInterventionQuestion] = useState("");
     const [pendingActionData, setPendingActionData] = useState<any>(null);
+
+    // Stable helper callbacks so executeNextStep can safely depend on them
+    const verifyGoalCompletion = useCallback(async () => {
+        if (!activeTask) return;
+        const state = await captureGlobalContext();
+        const res = await fetchAISurvey({ goal: activeTask.prompt, memory: activeTask.memory, surveyContent: state });
+        if (res.isGoalAchieved) {
+            setActiveTask(prev => prev ? { ...prev, status: 'completed' } : null);
+            addLog("Mission Verified Complete", "success");
+        } else {
+            addLog("Incomplete state — re-shaping plan.", "system");
+            return false; // Signal to re-plan
+        }
+    }, [activeTask, setActiveTask, addLog]);
+
+    const updateStepStatus = useCallback((idx: number, status: any) => {
+        setActiveTask(prev => prev ? {
+            ...prev,
+            steps: prev.steps.map((s, i) => i === idx ? { ...s, status } : s)
+        } : null);
+    }, [setActiveTask]);
+
+    const triggerIntervention = useCallback((result: any) => {
+        setInterventionQuestion(result.parameters.question || "Strategic ambiguity.");
+        setPendingActionData(result);
+        setIsInterventionOpen(true);
+        setActiveTask(prev => prev ? { ...prev, status: 'intervention_required' } : null);
+    }, [setInterventionQuestion, setPendingActionData, setIsInterventionOpen, setActiveTask]);
+
+    const recordStep = useCallback(async (ref: any, memory: ExecutionMemory) => {
+        await setDoc(ref, {
+            memory: arrayUnion({ ...memory, timestamp: Date.now() }),
+            updatedAt: Date.now()
+        }, { merge: true });
+    }, []);
+
+    const handleStepResult = useCallback((success: boolean, memory: ExecutionMemory, goalAchieved: boolean) => {
+        if (success) {
+            setActiveTask(prev => prev ? {
+                ...prev,
+                steps: prev.steps.map((s, i) => i === prev.currentStepIndex ? { ...s, status: 'completed' } : s),
+                currentStepIndex: prev.currentStepIndex + 1,
+                memory: [...prev.memory, memory],
+                status: goalAchieved ? 'completed' : 'running'
+            } : null);
+        } else {
+            addLog("Action failed — retrying.", "warn");
+        }
+    }, [setActiveTask, addLog]);
 
     const executeNextStep = useCallback(async () => {
         if (!activeTask || !db) return;
@@ -53,59 +102,14 @@ export function useMissionExecution(
         } catch (e: any) {
             addLog(`Error: ${e.message}`, "warn");
         }
-    }, [activeTask, db, addLog]);
-
-    const verifyGoalCompletion = async () => {
-        if (!activeTask) return;
-        const state = await captureGlobalContext();
-        const res = await fetchAISurvey({ goal: activeTask.prompt, memory: activeTask.memory, surveyContent: state });
-        if (res.isGoalAchieved) {
-            setActiveTask(prev => prev ? { ...prev, status: 'completed' } : null);
-            addLog("Mission Verified Complete", "success");
-        } else {
-            addLog("Incomplete state — re-shaping plan.", "system");
-            return false; // Signal to re-plan
-        }
-    };
-
-    const updateStepStatus = (idx: number, status: any) => {
-        setActiveTask(prev => prev ? {
-            ...prev,
-            steps: prev.steps.map((s, i) => i === idx ? { ...s, status } : s)
-        } : null);
-    };
-
-    const triggerIntervention = (result: any) => {
-        setInterventionQuestion(result.parameters.question || "Strategic ambiguity.");
-        setPendingActionData(result);
-        setIsInterventionOpen(true);
-        setActiveTask(prev => prev ? { ...prev, status: 'intervention_required' } : null);
-    };
-
-    const recordStep = async (ref: any, memory: ExecutionMemory) => {
-        await setDoc(ref, {
-            memory: arrayUnion({ ...memory, timestamp: Date.now() }),
-            updatedAt: Date.now()
-        }, { merge: true });
-    };
-
-    const handleStepResult = (success: boolean, memory: ExecutionMemory, goalAchieved: boolean) => {
-        if (success) {
-            setActiveTask(prev => prev ? {
-                ...prev,
-                steps: prev.steps.map((s, i) => i === prev.currentStepIndex ? { ...s, status: 'completed' } : s),
-                currentStepIndex: prev.currentStepIndex + 1,
-                memory: [...prev.memory, memory],
-                status: goalAchieved ? 'completed' : 'running'
-            } : null);
-        } else {
-            addLog("Action failed — retrying.", "warn");
-        }
-    };
+    }, [activeTask, db, addLog, verifyGoalCompletion, updateStepStatus, triggerIntervention, recordStep, handleStepResult]);
 
     return {
-        executeNextStep, verifyGoalCompletion,
-        isInterventionOpen, setIsInterventionOpen,
-        interventionQuestion, pendingActionData
+        executeNextStep,
+        verifyGoalCompletion,
+        isInterventionOpen,
+        setIsInterventionOpen,
+        interventionQuestion,
+        pendingActionData
     };
 }

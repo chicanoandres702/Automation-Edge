@@ -2,8 +2,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { Toaster } from "@/components/ui/toaster";
+import { SidebarProvider, Toaster } from "@/ui";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 
 const spaceGrotesk = Space_Grotesk({

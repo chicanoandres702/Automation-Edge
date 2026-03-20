@@ -4,7 +4,7 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import type { FirebaseApp } from 'firebase/app';
 import type { Firestore } from 'firebase/firestore';
 import type { Auth, User } from 'firebase/auth';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
+import { FirebaseErrorListener } from '@/firebase/components/FirebaseErrorListener';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -102,7 +102,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     })();
 
     return () => {
-      if (unsub) try { unsub(); } catch (e) { /* ignore */ }
+      if (unsub) try { unsub(); } catch { /* ignore */ }
     };
   }, [auth]);
 
@@ -174,11 +174,18 @@ export const useFirebaseApp = (): FirebaseApp => {
 type MemoFirebase <T> = T & {__memo?: boolean};
 
 export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | (MemoFirebase<T>) {
-  const memoized = useMemo(factory, deps);
-  
+  // This wrapper intentionally accepts a factory and dynamic deps array. The
+  // eslint rule expecting inline functions/array literals would be noisy here.
+  // This wrapper intentionally accepts a factory and dynamic deps array. We
+  // call the factory inside an inline function so the hooks lint rule that
+  // expects inline callbacks is satisfied. The dependency array is still
+  // dynamic and therefore we disable the exhaustive-deps check for this line.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const memoized = useMemo(() => factory(), deps as DependencyList);
+
   if(typeof memoized !== 'object' || memoized === null) return memoized;
   (memoized as MemoFirebase<T>).__memo = true;
-  
+
   return memoized;
 }
 

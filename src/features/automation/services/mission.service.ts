@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc, collection, getDocs, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, collection, getDocs, deleteDoc } from "firebase/firestore";
 import { Firestore } from "firebase/firestore";
 
 export async function fetchAIPlan(goal: string, apiKey: string | null, sharedToolHostnames: string[] = []) {

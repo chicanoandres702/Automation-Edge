@@ -39,7 +39,7 @@ interface SecurityRuleRequest {
  * @param currentUser The currently authenticated Firebase user.
  * @returns An object that mirrors request.auth in security rules, or null.
  */
-function buildAuthObject(currentUser: User | null): FirebaseAuthObject | null {
+function _buildAuthObject(currentUser: User | null): FirebaseAuthObject | null {
   if (!currentUser) {
     return null;
   }

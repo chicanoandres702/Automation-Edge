@@ -1,0 +1,13 @@
+/* eslint-disable jsx-a11y/label-has-associated-control */
+"use client"
+
+import * as React from "react"
+
+export type LabelProps = React.LabelHTMLAttributes<HTMLLabelElement>
+
+const Label = React.forwardRef<HTMLLabelElement, LabelProps>(({ className, ...props }, ref) => {
+  return <label ref={ref} className={className} {...props} />
+})
+Label.displayName = "Label"
+
+export { Label }

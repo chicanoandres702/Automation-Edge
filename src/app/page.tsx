@@ -1,18 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { AppSidebar } from "@/components/layout/app-sidebar";
-import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState, useEffect, useRef } from "react";
+import { AppSidebar } from "@/features/layout";
+import { SidebarInset, SidebarTrigger, Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui";
 import { Lock, Unlock, Settings as SettingsIcon, Terminal, ShieldCheck } from "lucide-react";
-import { AgentVisualizer } from "@/components/automation/visualizer";
-import { SettingsDialog } from "@/components/settings/settings-dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card } from "@/components/ui/card";
-import { TacticalControlCard } from "@/components/automation/TacticalControlCard";
-import { MissionRegistry } from "@/components/automation/MissionRegistry";
-import { ControlModal } from "@/components/automation/ControlModal";
-import { useNexusMission } from "@/hooks/use-nexus-mission";
+import { AgentVisualizer, TacticalControlCard, MissionRegistry, ControlModal } from "@/features/automation";
+import { SettingsDialog } from "@/features/settings";
+import { ScrollArea, Card } from "@/ui";
+
+import { useNexusMission } from "@/features/automation";
 import { cn } from "@/lib/utils";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 
@@ -21,10 +17,17 @@ export default function NexusControlCenter() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const mission = useNexusMission();
 
+  const _didInitRef = useRef(false);
+
   useEffect(() => {
-    setMounted(true);
-    mission.addLog("Nexus Kernel v6.8 AI-CORE Initialized", "system");
-  }, []);
+    if (_didInitRef.current) return;
+    _didInitRef.current = true;
+    const t = setTimeout(() => {
+      setMounted(true);
+      mission?.addLog("Nexus Kernel v6.8 AI-CORE Initialized", "system");
+    }, 0);
+    return () => clearTimeout(t);
+  }, [mission]);
 
   if (!mounted) return null;
 
@@ -65,7 +68,7 @@ export default function NexusControlCenter() {
         </header>
 
         <main className="flex-1 flex flex-col min-h-0 z-10 p-4 md:p-6 space-y-6">
-          <div className="max-w-4xl mx-auto w-full space-y-4">
+            <div className="max-w-4xl mx-auto w-full space-y-4">
             <TacticalControlCard prompt={mission.prompt} setPrompt={mission.setPrompt} isGenerating={mission.isGenerating} onInitiate={mission.handleStartMission} activeStatus={mission.activeTask?.status} />
           </div>
 
