@@ -1,1 +1,1 @@
-export * from "@/ui/dialog2";
+export * from "@/ui/dialog";

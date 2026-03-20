@@ -11,7 +11,7 @@ export * from "./carousel";
 export * from "./chart";
 export * from "./checkbox";
 export * from "./collapsible";
-export * from "./dialog2";
+export * from "./dialog";
 export * from "./dropdown-menu";
 export * from "./form";
 export * from "./input";

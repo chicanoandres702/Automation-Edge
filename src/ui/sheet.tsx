@@ -72,7 +72,11 @@ export const Sheet: React.FC<SheetProps> = ({ children, open, onOpenChange, side
   )
 }
 
-export const SheetContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ children, className, ...props }, ref) => (
+export type SheetContentProps = React.ComponentPropsWithoutRef<typeof React.Fragment> & {
+  side?: "right" | "left" | "top" | "bottom"
+}
+
+export const SheetContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement> & { side?: "right" | "left" | "top" | "bottom" }>(({ children, className, ...props }, ref) => (
   <div ref={ref} className={cn("p-4", className)} {...props}>
     {children}
   </div>

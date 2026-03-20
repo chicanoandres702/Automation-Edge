@@ -7,7 +7,13 @@ import { cn } from "@/lib/utils"
 
 const TooltipProvider = TooltipPrimitive.Provider
 
-const Tooltip = TooltipPrimitive.Root
+const TooltipRoot: React.FC<React.ComponentProps<typeof TooltipPrimitive.Root>> = ({ children, ...props }) => (
+  <TooltipProvider>
+    <TooltipPrimitive.Root {...props}>{children}</TooltipPrimitive.Root>
+  </TooltipProvider>
+)
+
+const Tooltip = TooltipRoot
 
 const TooltipTrigger = TooltipPrimitive.Trigger
 
@@ -28,3 +34,4 @@ const TooltipContent = React.forwardRef<
 TooltipContent.displayName = TooltipPrimitive.Content.displayName
 
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+export default Tooltip
