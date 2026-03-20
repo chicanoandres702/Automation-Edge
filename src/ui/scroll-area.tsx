@@ -22,7 +22,6 @@ const ScrollArea = React.forwardRef<HTMLDivElement, ScrollAreaProps>(({ axis = "
       ref={ref}
       role="region"
       aria-label={label}
-      tabIndex={0}
       className={cn(overflowClass, "focus:outline-none focus:ring-2 focus:ring-ring", className)}
       {...props}
     >

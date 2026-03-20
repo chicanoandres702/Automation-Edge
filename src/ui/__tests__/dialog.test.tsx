@@ -46,9 +46,8 @@ describe('Dialog (basic)', () => {
       </Dialog>
     )
 
-    // the top-level wrapper has role="presentation"
-    const wrapper = screen.getByRole('presentation')
-    fireEvent.click(wrapper)
+    // simulate an outside pointer down (click) at document level
+    fireEvent.mouseDown(document.body)
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 })

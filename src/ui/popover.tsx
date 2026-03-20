@@ -20,10 +20,10 @@ export const Popover: React.FC<PopoverProps> = ({ children, open: controlledOpen
   const isControlled = controlledOpen !== undefined
   const open = isControlled ? controlledOpen : uncontrolledOpen
 
-  const setOpen = (v: boolean) => {
+  const setOpen = React.useCallback((v: boolean) => {
     if (!isControlled) setUncontrolledOpen(v)
     onOpenChange?.(v)
-  }
+  }, [isControlled, onOpenChange])
 
   const ref = React.useRef<HTMLDivElement | null>(null)
 
@@ -44,7 +44,7 @@ export const Popover: React.FC<PopoverProps> = ({ children, open: controlledOpen
       window.removeEventListener("keydown", onKey)
       window.removeEventListener("mousedown", onClick)
     }
-  }, [open])
+  }, [open, setOpen])
 
   return (
     <PopoverContext.Provider value={{ open, setOpen }}>

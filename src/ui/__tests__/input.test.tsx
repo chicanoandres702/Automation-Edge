@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, cleanup } from '@testing-library/react'
 import { Input } from '../input'
 import { vi, describe, it, expect, afterEach } from 'vitest'
 
