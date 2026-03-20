@@ -7,7 +7,13 @@ export type ScrollAreaProps = React.HTMLAttributes<HTMLDivElement>
 
 const ScrollArea = React.forwardRef<HTMLDivElement, ScrollAreaProps>(({ className, children, ...props }, ref) => {
   return (
-    <div ref={ref} className={cn("overflow-auto", className)} {...props}>
+    <div
+      ref={ref}
+      role="region"
+      tabIndex={0}
+      className={cn("overflow-auto focus:outline-none", className)}
+      {...props}
+    >
       {children}
     </div>
   )
