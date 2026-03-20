@@ -80,12 +80,13 @@ export function ControlModal({
                     <div className="h-px bg-white/5" />
 
                     {/* Re-prompt / New Objective */}
-                    <div className="space-y-3">
-                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground px-1">
+                        <div className="space-y-3">
+                        <Label htmlFor="reprompt-objective" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground px-1">
                             Override Objective
                         </Label>
                         <div className="relative">
                             <Input
+                                id="reprompt-objective"
                                 placeholder="Enter New Mission Prompt..."
                                 className="bg-black/20 border-white/10 text-xs h-12 rounded-2xl px-5 focus-visible:ring-primary/30"
                                 value={repromptValue}
